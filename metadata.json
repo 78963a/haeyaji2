@@ -1,0 +1,6 @@
+{
+  "name": "해야지",
+  "description": "미루고 미뤘던 할 일들을 마침내 해내도록 돕는 태그 기반 맞춤형 실천 촉구 할일 관리 앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
