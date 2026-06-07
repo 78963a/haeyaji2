@@ -4,8 +4,16 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import localforage from 'localforage';
 import { Task, TaskTags, SubTask, AppSettings } from '../types';
 import { SAMPLE_TASKS, DEFAULT_TAG_CATEGORIES } from '../constants';
+
+// Configure localforage for IndexedDB storage
+localforage.config({
+  name: 'haeyaji_app',
+  storeName: 'haeyaji_store',
+  description: '야해야지 해야지러들을 위한 안전한 IndexedDB 저장소'
+});
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -16,41 +24,78 @@ export function useTasks() {
     urgencyNotification: true,
     customTags: DEFAULT_TAG_CATEGORIES
   });
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   // Reference to hold live ticking intervals
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Initial Load
+  // 1. Initial async load from IndexedDB with transparent localStorage migration
   useEffect(() => {
-    const savedTasks = localStorage.getItem('haeyaji_tasks');
-    const savedActiveTaskId = localStorage.getItem('haeyaji_active_task_id');
-    const savedSettings = localStorage.getItem('haeyaji_settings');
-
-    if (savedTasks) {
+    async function loadInitialData() {
       try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (e) {
-        console.error('Failed to parse tasks', e);
-        setTasks(SAMPLE_TASKS);
-      }
-    } else {
-      // First initiation: load premium sample tasks so the app is filled beautifully
-      setTasks(SAMPLE_TASKS);
-      localStorage.setItem('haeyaji_tasks', JSON.stringify(SAMPLE_TASKS));
-    }
+        const savedTasks = await localforage.getItem<Task[]>('haeyaji_tasks');
+        const savedActiveTaskId = await localforage.getItem<string | null>('haeyaji_active_task_id');
+        const savedSettings = await localforage.getItem<AppSettings>('haeyaji_settings');
 
-    if (savedActiveTaskId) {
-      setActiveTaskId(savedActiveTaskId);
-    }
+        let finalTasks: Task[] = SAMPLE_TASKS;
+        let finalActiveTaskId: string | null = null;
+        let finalSettings: AppSettings = {
+          userName: '해야지러',
+          playSounds: true,
+          urgencyNotification: true,
+          customTags: DEFAULT_TAG_CATEGORIES
+        };
 
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        if (!parsed.customTags || parsed.customTags.length === 0) {
-          parsed.customTags = DEFAULT_TAG_CATEGORIES;
+        // --- Tasks Loading / Migration ---
+        if (savedTasks) {
+          finalTasks = savedTasks;
         } else {
-          // Dynamic migration/fix of old '미뤄둔 장례시점' string loaded from user's localStorage
-          parsed.customTags = parsed.customTags.map((cat: any) => {
+          const oldTasksStr = localStorage.getItem('haeyaji_tasks');
+          if (oldTasksStr) {
+            try {
+              finalTasks = JSON.parse(oldTasksStr);
+              await localforage.setItem('haeyaji_tasks', finalTasks);
+            } catch (e) {
+              console.error('Failed to parse legacy tasks during migration', e);
+            }
+          } else {
+            await localforage.setItem('haeyaji_tasks', SAMPLE_TASKS);
+          }
+        }
+
+        // --- Active Task Loading / Migration ---
+        if (savedActiveTaskId !== null) {
+          finalActiveTaskId = savedActiveTaskId;
+        } else {
+          const oldActiveTaskId = localStorage.getItem('haeyaji_active_task_id');
+          if (oldActiveTaskId) {
+            finalActiveTaskId = oldActiveTaskId;
+            await localforage.setItem('haeyaji_active_task_id', oldActiveTaskId);
+          }
+        }
+
+        // --- Settings Loading / Migration ---
+        if (savedSettings) {
+          finalSettings = savedSettings;
+        } else {
+          const oldSettingsStr = localStorage.getItem('haeyaji_settings');
+          if (oldSettingsStr) {
+            try {
+              finalSettings = JSON.parse(oldSettingsStr);
+              await localforage.setItem('haeyaji_settings', finalSettings);
+            } catch (e) {
+              console.error('Failed to parse legacy settings during legacy migration', e);
+            }
+          } else {
+            await localforage.setItem('haeyaji_settings', finalSettings);
+          }
+        }
+
+        // Ensure customTags is aligned and sanitized
+        if (!finalSettings.customTags || finalSettings.customTags.length === 0) {
+          finalSettings.customTags = DEFAULT_TAG_CATEGORIES;
+        } else {
+          finalSettings.customTags = finalSettings.customTags.map((cat: any) => {
             if (cat.id === 'createdWhen' && (cat.label.includes('미뤄둔 장례시점') || cat.label.includes('미뤄둔 장례 시점'))) {
               return {
                 ...cat,
@@ -60,31 +105,34 @@ export function useTasks() {
             return cat;
           });
         }
-        setSettings(parsed);
-      } catch (e) {
-        console.error('Failed to parse settings', e);
+
+        setTasks(finalTasks);
+        setActiveTaskId(finalActiveTaskId);
+        setSettings(finalSettings);
+      } catch (err) {
+        console.error('Error during useTasks localforage initialization', err);
+        setTasks(SAMPLE_TASKS);
+      } finally {
+        setIsInitialized(true);
       }
-    } else {
-      const defaultSettings = {
-        userName: '해야지러',
-        playSounds: true,
-        urgencyNotification: true,
-        customTags: DEFAULT_TAG_CATEGORIES
-      };
-      setSettings(defaultSettings);
-      localStorage.setItem('haeyaji_settings', JSON.stringify(defaultSettings));
     }
+
+    loadInitialData();
   }, []);
 
-  // 2. Persistent saves upon state changes
-  const saveTasksToLocalStorage = (newTasks: Task[]) => {
+  // 2. Persistent saves upon state changes utilizing localforage
+  const saveTasksToLocalForage = (newTasks: Task[]) => {
     setTasks(newTasks);
-    localStorage.setItem('haeyaji_tasks', JSON.stringify(newTasks));
+    localforage.setItem('haeyaji_tasks', newTasks).catch((err) => {
+      console.error('Failed localforage tasks save', err);
+    });
   };
 
-  const saveSettingsToLocalStorage = (newSettings: AppSettings) => {
+  const saveSettingsToLocalForage = (newSettings: AppSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('haeyaji_settings', JSON.stringify(newSettings));
+    localforage.setItem('haeyaji_settings', newSettings).catch((err) => {
+      console.error('Failed localforage settings save', err);
+    });
   };
 
   // 3. Ticking / count-up timer is completely disabled as per user instruction.
@@ -94,9 +142,9 @@ export function useTasks() {
 
   // Reset ALL data to active samples
   const resetToSamples = () => {
-    saveTasksToLocalStorage(SAMPLE_TASKS);
+    saveTasksToLocalForage(SAMPLE_TASKS);
     setActiveTaskId(null);
-    localStorage.removeItem('haeyaji_active_task_id');
+    localforage.removeItem('haeyaji_active_task_id');
   };
 
   // Import raw JSON data
@@ -104,7 +152,7 @@ export function useTasks() {
     try {
       const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed)) {
-        saveTasksToLocalStorage(parsed);
+        saveTasksToLocalForage(parsed);
         return true;
       }
       return false;
@@ -135,21 +183,21 @@ export function useTasks() {
     };
 
     const updated = [newTask, ...tasks];
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const updateTask = (updatedTask: Task) => {
     const updated = tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t));
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const deleteTask = (id: string) => {
     if (activeTaskId === id) {
       setActiveTaskId(null);
-      localStorage.removeItem('haeyaji_active_task_id');
+      localforage.removeItem('haeyaji_active_task_id');
     }
     const updated = tasks.filter((t) => t.id !== id);
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const startTask = (id: string) => {
@@ -173,8 +221,8 @@ export function useTasks() {
     });
 
     setActiveTaskId(id);
-    localStorage.setItem('haeyaji_active_task_id', id);
-    saveTasksToLocalStorage(updated);
+    localforage.setItem('haeyaji_active_task_id', id);
+    saveTasksToLocalForage(updated);
   };
 
   const pauseTask = (id: string) => {
@@ -185,8 +233,8 @@ export function useTasks() {
       return t;
     });
     setActiveTaskId(null);
-    localStorage.removeItem('haeyaji_active_task_id');
-    saveTasksToLocalStorage(updated);
+    localforage.removeItem('haeyaji_active_task_id');
+    saveTasksToLocalForage(updated);
   };
 
   const completeTask = (id: string) => {
@@ -208,9 +256,9 @@ export function useTasks() {
 
     if (activeTaskId === id) {
       setActiveTaskId(null);
-      localStorage.removeItem('haeyaji_active_task_id');
+      localforage.removeItem('haeyaji_active_task_id');
     }
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const abandonTask = (id: string, reason: string) => {
@@ -228,9 +276,9 @@ export function useTasks() {
 
     if (activeTaskId === id) {
       setActiveTaskId(null);
-      localStorage.removeItem('haeyaji_active_task_id');
+      localforage.removeItem('haeyaji_active_task_id');
     }
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const toggleSubtask = (taskId: string, subtaskId: string) => {
@@ -254,7 +302,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const startSubtask = (taskId: string, subtaskId: string) => {
@@ -274,7 +322,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const pauseSubtask = (taskId: string, subtaskId: string) => {
@@ -293,7 +341,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const resumeSubtask = (taskId: string, subtaskId: string) => {
@@ -312,7 +360,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const cancelSubtask = (taskId: string, subtaskId: string) => {
@@ -335,7 +383,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const updateSubtaskTitle = (taskId: string, subtaskId: string, newTitle: string) => {
@@ -354,7 +402,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const completeSubtask = (taskId: string, subtaskId: string) => {
@@ -389,7 +437,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const addSubtaskToTask = (taskId: string, title: string) => {
@@ -405,7 +453,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const removeSubtaskFromTask = (taskId: string, subtaskId: string) => {
@@ -415,7 +463,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const cheerTask = (id: string) => {
@@ -425,7 +473,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const startActivityLog = (taskId: string, activityText: string) => {
@@ -444,7 +492,7 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   const endActivityLog = (taskId: string, logId: string) => {
@@ -475,15 +523,16 @@ export function useTasks() {
       }
       return t;
     });
-    saveTasksToLocalStorage(updated);
+    saveTasksToLocalForage(updated);
   };
 
   return {
+    isInitialized,
     tasks,
     activeTaskId,
     activeTask: tasks.find((t) => t.id === activeTaskId) || null,
     settings,
-    saveSettings: saveSettingsToLocalStorage,
+    saveSettings: saveSettingsToLocalForage,
     addTask,
     updateTask,
     deleteTask,

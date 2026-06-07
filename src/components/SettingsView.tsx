@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import localforage from 'localforage';
 import { AppSettings, Task, TagCategory, TagChoice } from '../types';
 import { ShieldAlert, Trash2, Database, Download, Upload, Plus, Tag, FolderPlus } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -376,7 +377,12 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
               onClick={() => {
                 if (confirm('모든 데이터가 완전히 소멸되며 최초 상태로 기각됩니다. 정말 초기화 하겠습니까?')) {
                   localStorage.clear();
-                  window.location.reload();
+                  localforage.clear().then(() => {
+                    window.location.reload();
+                  }).catch((err) => {
+                    console.error('Failed to clear localforage store', err);
+                    window.location.reload();
+                  });
                 }
               }}
               className="flex-1 inline-flex items-center justify-center gap-1.5 bg-rose-200 border-3 border-black text-black py-3 text-xs font-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"

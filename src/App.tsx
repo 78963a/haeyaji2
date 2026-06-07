@@ -18,6 +18,7 @@ import { TAG_CREATED_WHEN_MAP } from './constants';
 
 export default function App() {
   const {
+    isInitialized,
     tasks,
     activeTaskId,
     activeTask,
@@ -56,6 +57,20 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeView]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-[#F4F4F1] flex flex-col items-center justify-center p-6 text-black">
+        <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_#000] text-center max-w-sm space-y-4">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-[#FF4D00] border-t-transparent rounded-full mx-auto" />
+          <h2 className="text-lg font-black uppercase tracking-tight">해야지 시스템 기동 중...</h2>
+          <p className="text-xs text-zinc-650 font-bold leading-relaxed">
+            안전하고 쾌적한 IndexedDB(localForage) 엔진을 불러오고 있습니다. 잠시만 기다려주세요!
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Computed counters based on user definitions:
   // 1. 쌓인 일 (Unstarted tasks: status is pending/active, with no subtasks completed)
