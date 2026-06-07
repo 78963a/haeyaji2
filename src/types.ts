@@ -75,8 +75,5 @@ export interface TagCategory {
 }
 
 export interface AppSettings {
-  userName: string;
-  playSounds: boolean;
-  urgencyNotification: boolean;
   customTags?: TagCategory[];
 }

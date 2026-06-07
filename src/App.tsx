@@ -276,7 +276,7 @@ export default function App() {
             }`}
           >
             <Home className={`w-5.5 h-5.5 ${activeView === 'home' ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-[10px]">홈</span>
+            <span className="text-xs">홈</span>
           </button>
 
           {/* COMPLETED/ABANDONED HISTORY BTN */}
@@ -287,7 +287,7 @@ export default function App() {
             }`}
           >
             <Archive className={`w-5.5 h-5.5 ${activeView === 'history' ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-[10px]">기록보관소</span>
+            <span className="text-xs">기록</span>
           </button>
 
           {/* ADD TASK COMPACT FLOATING BAR (CENTRAL) */}
@@ -314,7 +314,7 @@ export default function App() {
             title="현재 집중 실행 중인 화면으로 가기"
           >
             <Flame className={`w-5.5 h-5.5 ${activeView === 'active' ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-[10px]">집중 실행</span>
+            <span className="text-xs">집중</span>
           </button>
 
           {/* SETTINGS NAVIGATION BTN */}
@@ -325,7 +325,7 @@ export default function App() {
             }`}
           >
             <Settings className={`w-5.5 h-5.5 ${activeView === 'settings' ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-[10px]">설정</span>
+            <span className="text-xs">설정</span>
           </button>
 
         </div>
@@ -356,9 +356,9 @@ export default function App() {
               <div className="flex items-start justify-between border-b-4 border-black pb-3 mb-4">
                 <div>
                   <h3 className="text-lg font-black text-black uppercase tracking-tight flex items-center gap-2">
-                    {selectedDetailGroup === 'unstarted' && '📦 쌓인 일 리스트'}
-                    {selectedDetailGroup === 'inprogress' && '🚧 해결중인 일 리스트'}
-                    {selectedDetailGroup === 'completed' && '🎉 해결 완료된 목록'}
+                    {selectedDetailGroup === 'unstarted' && '📦 쌓인 일'}
+                    {selectedDetailGroup === 'inprogress' && '🚧 해결중'}
+                    {selectedDetailGroup === 'completed' && '🎉 해결 완료'}
                     <span className="text-white bg-[#FF4D00] text-xs font-black px-2 py-0.5 border-2 border-black inline-block ml-1">
                       {selectedDetailGroup === 'unstarted' && `${unstartedTasks.length}개`}
                       {selectedDetailGroup === 'inprogress' && `${inProgressTasks.length}개`}

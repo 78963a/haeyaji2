@@ -19,9 +19,6 @@ export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
-    userName: '해야지러',
-    playSounds: true,
-    urgencyNotification: true,
     customTags: DEFAULT_TAG_CATEGORIES
   });
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
@@ -40,9 +37,6 @@ export function useTasks() {
         let finalTasks: Task[] = SAMPLE_TASKS;
         let finalActiveTaskId: string | null = null;
         let finalSettings: AppSettings = {
-          userName: '해야지러',
-          playSounds: true,
-          urgencyNotification: true,
           customTags: DEFAULT_TAG_CATEGORIES
         };
 

@@ -42,3 +42,8 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #FF4D00;
 }
+
+/* global.css 또는 index.css 파일 최하단 */ 
+body { -webkit-user-select: none; /* 사파리 및 iOS 앱 환경 방어 */ 
+user-select: none; /* 표준 브라우저 방어 */ } 
+

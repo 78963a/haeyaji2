@@ -86,7 +86,7 @@ export function HistoryView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
               : 'text-[#1A1A1A] hover:bg-zinc-200'
           }`}
         >
-          <Trophy className="w-3.5 h-3.5 stroke-[2.5]" /> 실천 분석
+          <Trophy className="w-3.5 h-3.5 stroke-[2.5]" /> 분석
         </button>
         <button
           onClick={() => setActiveTab('completed')}
@@ -106,7 +106,7 @@ export function HistoryView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
               : 'text-[#1A1A1A] hover:bg-zinc-200'
           }`}
         >
-          <XCircle className="w-3.5 h-3.5 stroke-[2.5]" /> 잠시 포기 ({abandonedTasks.length})
+          <XCircle className="w-3.5 h-3.5 stroke-[2.5]" /> 보류 ({abandonedTasks.length})
         </button>
       </div>
 

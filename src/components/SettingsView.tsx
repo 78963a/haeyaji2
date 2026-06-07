@@ -18,10 +18,6 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: SettingsViewProps) {
-  const [userName, setUserName] = useState(settings.userName || '해야지러');
-  const [playSounds, setPlaySounds] = useState(settings.playSounds ?? true);
-  const [urgencyNotification, setUrgencyNotification] = useState(settings.urgencyNotification ?? true);
-  
   // Tag Categories editing state
   const [categories, setCategories] = useState<TagCategory[]>([]);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
@@ -30,14 +26,14 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
   const [optionLabelInputs, setOptionLabelInputs] = useState<Record<string, string>>({});
   const [optionIconInputs, setOptionIconInputs] = useState<Record<string, string>>({});
 
-  // Sync internal categories state with settings
+  // Sync internal categories state and profile preferences with settings when parent settings update
   useEffect(() => {
     if (settings.customTags && settings.customTags.length > 0) {
       setCategories(settings.customTags);
     } else {
       setCategories(DEFAULT_TAG_CATEGORIES);
     }
-  }, [settings.customTags]);
+  }, [settings]);
 
   // JSON file-based backup restore state
   const [showRestoreConfirmModal, setShowRestoreConfirmModal] = useState(false);
@@ -62,9 +58,6 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
     e.preventDefault();
     onSaveSettings({
       ...settings,
-      userName: userName.trim(),
-      playSounds,
-      urgencyNotification,
       customTags: categories.length > 0 ? categories : undefined
     });
     setSaveAlert(true);
@@ -216,7 +209,7 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
       {/* 2. Custom Tags Administration Card */}
       <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="text-sm font-black text-black mb-1.5 flex items-center gap-2 uppercase">
-          🏷️ 태그 카테고리 & 분류 초정밀 커스터마이즈
+          🏷️ 사용자 태그 설정
         </h4>
         <p className="text-[11px] text-zinc-700 leading-relaxed font-bold mb-5">
           기본 제공되는 네 가지 태그(시점, 성격, 도구, 시간) 내부의 옵션을 지우거나 새 옵션을 추가할 수 있으며, 이외에도 무제한으로 자신만의 태그 카테고리(예: '우선순위', '장소', '감정')를 생성할 수 있습니다.
@@ -227,7 +220,7 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
         {/* 2A. Create new custom category form */}
         <form onSubmit={handleCreateCategory} className="border-3 border-dashed border-zinc-400 p-4 mb-6 bg-[#FFFDF0]">
           <span className="text-xs font-black text-[#FF4D00] flex items-center gap-1 mb-2.5">
-            <FolderPlus className="w-4 h-4 stroke-[3]" /> 새 태그 대카테고리 소환하기
+            <FolderPlus className="w-4 h-4 stroke-[3]" /> 새 카테고리 추가
           </span>
           <div className="flex gap-2">
             <input
@@ -335,7 +328,7 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
       <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="text-sm font-black text-black mb-3 flex items-center gap-2 uppercase">
           <Database className="w-4 h-4 text-[#FF4D00] stroke-[3]" />
-          JSON 백업 및 데이터 안전 복원
+          JSON 백업 및 복원
         </h4>
         <p className="text-[11px] text-[#1A1A1A]/85 mb-4 leading-relaxed font-bold">
           브라우저 내부에 보관 중인 실천 데이터를 JSON 파일로 다운로드하여 백업하거나, 과거에 다운로드한 백업 파일을 직접 실어 안전하게 복원할 수 있습니다.
@@ -375,7 +368,7 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
       <div className="bg-white border-4 border-black p-5 border-rose-500 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="text-sm font-black text-rose-500 mb-2.5 flex items-center gap-2 uppercase">
           <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
-          공장 초기화 및 데이터 완전 제거 구역
+          데이터 완전 초기화
         </h4>
         
         <div className="space-y-3.5 font-bold text-black">
@@ -393,7 +386,7 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
               className="w-full inline-flex items-center justify-center gap-1.5 bg-rose-200 hover:bg-rose-300 border-3 border-black text-rose-950 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
             >
               <Trash2 className="w-4 h-4 stroke-[2.5]" />
-              로컬 데이터 및 앱 세팅 영구 파괴/청소하기
+              로컬 데이터 영구 청소하기
             </button>
           </div>
         </div>
