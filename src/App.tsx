@@ -366,9 +366,9 @@ export default function App() {
                     </span>
                   </h3>
                   <p className="text-[10px] text-zinc-500 font-bold mt-1 text-[#1A1A1A]/80 leading-normal pr-4">
-                    {selectedDetailGroup === 'unstarted' && '전혀 손대지 않고 고이 모셔둔, 당신의 최초 지상 미행동 과제들입니다.'}
-                    {selectedDetailGroup === 'inprogress' && '조금이라도 실천에 불을 지폈으나 마무리를 보지 못한 미결 과업구역입니다.'}
-                    {selectedDetailGroup === 'completed' && '지연본능과의 격투 끝에 위대히 완파된 자랑스런 흔적 기록지입니다.'}
+                    {selectedDetailGroup === 'unstarted' && '전혀 손대지 않고 고이 모셔둔 일들'}
+                    {selectedDetailGroup === 'inprogress' && '이미 시작했고 진전이 있는 일들'}
+                    {selectedDetailGroup === 'completed' && '자랑스러운 끝낸 일들'}
                   </p>
                 </div>
                 <button
@@ -528,10 +528,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Modal Footer */}
-              <div className="pt-2 text-center text-[9px] text-zinc-400 font-black tracking-tight mt-3">
-                &ldquo;미룸 격퇴 시스템 해야지(Haeyaji) 백엔드 코어 관제 프로토콜&rdquo;
-              </div>
             </motion.div>
           </div>
         )}

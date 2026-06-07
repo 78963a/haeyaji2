@@ -243,25 +243,16 @@ export function ActiveFocusView({
           </div>
          </div>
 
-        {/* Practical tips */}
-        <div className="text-xs font-semibold text-zinc-700 bg-amber-50 border-3 border-dashed border-amber-300 p-3.5 flex items-start gap-2 rounded-none">
-          <span className="text-base shrink-0">💡</span>
-          <p className="leading-relaxed">
-            한 번에 큰 프로젝트를 끝내는 사람은 세상에 없습니다! 
-            <strong>무조건 '당장 30초 내에 움직일 수 있는 극소 단계'로 쪼개야</strong> 미룸 감옥에서 탈출할 수 있습니다. 
-            할 일들을 구체적으로 쪼개 입력하신 뒤, 완료할 때마다 체크 박스 또는 <strong>[세부행동 완료 ✅]</strong> 버튼을 가볍게 눌러 하나씩 해치워보세요.
-          </p>
-        </div>
 
         {/* Input box */}
         <form onSubmit={handleAddStepSubmit} className="space-y-2">
           <label className="text-[10px] font-black uppercase text-black block">
-            머리 안 아픈 직관적이고 미세한 실천 행동 등록하기:
+            이 프로젝트가 조금이라도 진전되려면 지금 내가 할 일은:
           </label>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
-              placeholder="예: 아래한글 기안문 양치기, 노트북에 어댑터 꽂기, 참고 자료 1개 찾아 읽기 등"
+              placeholder="예: 컴퓨터 켜기, 청소장소로 가기 등"
               value={newStepTitle}
               onChange={(e) => setNewStepTitle(e.target.value)}
               className="flex-1 bg-[#F4F4F1] border-3 border-black p-3 text-xs text-black font-black outline-none focus:bg-white focus:border-[#FF4D00]"
@@ -278,10 +269,6 @@ export function ActiveFocusView({
 
         {/* Subtask / Action List */}
         <div className="space-y-3 pt-1">
-          <span className="text-[10px] font-black text-zinc-500 block uppercase tracking-wider">
-            세부 실천 행동 리스트 (미완료된 행동이 위에 보이며, 완료된 행동은 아래로 내려갑니다)
-          </span>
-
           {task.subtasks.length > 0 ? (
             <div className="space-y-2.5">
               {(() => {
@@ -532,20 +519,7 @@ export function ActiveFocusView({
               className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 bg-[#a7f3d0] hover:bg-emerald-300 text-black border-3 border-black font-black py-4 text-xs shadow-[4px_4px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#000] transition cursor-pointer"
             >
               <CheckCircle className="w-4 h-4 fill-current text-black stroke-[2.5]" />
-              전체 끝장냈다! (전체 완료하기)
-            </button>
-
-            {/* OVERALL PAUSE BUTTON */}
-            <button
-              onClick={() => {
-                onPauseTask(task.id);
-                alert('할 일을 잠시 정지합니다. 언제든지 다시 집중할 수 있습니다.');
-                onBackToHome();
-              }}
-              className="inline-flex items-center justify-center gap-2 bg-[#fef08a] hover:bg-yellow-250 text-black border-3 border-black font-black py-4 text-xs shadow-[4px_4px_0px_0px_#000] active:translate-y-0.5 transition cursor-pointer"
-            >
-              <Pause className="w-4 h-4 stroke-[2.5]" />
-              잠시 정지하기 (정비하기)
+              이 할일 완전히 끝냈다!
             </button>
 
             {/* OVERALL ABANDON BUTTON */}
@@ -554,7 +528,7 @@ export function ActiveFocusView({
               className="inline-flex items-center justify-center gap-2 bg-[#fca5a5] hover:bg-rose-300 text-black border-3 border-black font-black py-4 text-xs shadow-[4px_4px_0px_0px_#000] active:translate-y-0.5 transition cursor-pointer"
             >
               <XCircle className="w-4 h-4 stroke-[2.5]" />
-              이유 쓰고 보류 (보류하기)
+              이유 쓰고 보류함에 넣기
             </button>
           </div>
 
@@ -563,7 +537,7 @@ export function ActiveFocusView({
               onClick={onBackToHome}
               className="text-[11px] text-zinc-500 hover:text-black font-bold transition hover:underline cursor-pointer"
             >
-              대시보드 화면 확인하기
+              첫 화면으로 돌아가기
             </button>
           </div>
         </div>

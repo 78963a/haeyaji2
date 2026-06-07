@@ -354,14 +354,6 @@ export function HomeView({ tasks, settings, onStartTask, onSelectView, onSelectT
               onClick={() => onStartTask(randomUrgedTask.id)}
               className="w-full text-left bg-white border-3 border-black p-5 shadow-[5px_5px_0px_0px_#000] hover:bg-[#FFFDF0] hover:shadow-[2px_2px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer block group text-xs text-black"
             >
-              <div className="flex justify-between items-center mb-2.5">
-                <span className="text-[10px] font-black uppercase text-[#FF4D00] tracking-wider flex items-center gap-1">
-                  🛠️ 과제 주요 세부 단계
-                </span>
-                <span className="text-[9px] font-black text-white bg-[#FF4D00] border border-black px-1.5 py-0.5 shadow-[1px_1px_0_#000] group-hover:scale-105 transition-transform">
-                  ⏱️ 터치해서 즉시 실천 구속하기
-                </span>
-              </div>
               
               {renderSubTaskSummary(randomUrgedTask)}
             </button>
@@ -596,14 +588,6 @@ export function HomeView({ tasks, settings, onStartTask, onSelectView, onSelectT
                     onClick={() => onStartTask(task.id)}
                     className="w-full text-left bg-white border-3 border-black p-5 shadow-[5px_5px_0px_0px_#000] hover:bg-[#FFFDF0] hover:shadow-[2px_2px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer block group text-xs relative z-10 font-sans"
                   >
-                    <div className="flex justify-between items-center mb-2.5">
-                      <span className="text-[10px] font-black uppercase text-[#FF4D00] tracking-wider flex items-center gap-1">
-                        🛠️ 할 일 세부 단계
-                      </span>
-                      <span className="text-[9px] font-black text-white bg-[#FF4D00] border border-black px-1.5 py-0.5 shadow-[1px_1px_0_#000] group-hover:scale-105 transition-transform">
-                        ⏱️ 터치해서 지금 바로 시작하기
-                      </span>
-                    </div>
                     
                     {renderSubTaskSummary(task)}
                   </button>
