@@ -14,11 +14,10 @@ interface SettingsViewProps {
   settings: AppSettings;
   tasks: Task[];
   onSaveSettings: (settings: AppSettings) => void;
-  onResetToSamples: () => void;
   onImportData: (jsonStr: string) => boolean;
 }
 
-export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples, onImportData }: SettingsViewProps) {
+export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: SettingsViewProps) {
   const [userName, setUserName] = useState(settings.userName || '해야지러');
   const [playSounds, setPlaySounds] = useState(settings.playSounds ?? true);
   const [urgencyNotification, setUrgencyNotification] = useState(settings.urgencyNotification ?? true);
@@ -40,10 +39,21 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
     }
   }, [settings.customTags]);
 
-  // JSON copy/paste state
-  const [jsonPaste, setJsonPaste] = useState('');
-  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  // JSON file-based backup restore state
+  const [showRestoreConfirmModal, setShowRestoreConfirmModal] = useState(false);
+  const [pendingRestoreJson, setPendingRestoreJson] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const [saveAlert, setSaveAlert] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [showDeleteOptionModal, setShowDeleteOptionModal] = useState(false);
+  const [deleteOptionTarget, setDeleteOptionTarget] = useState<{
+    catId: string;
+    catLabel: string;
+    optValue: string;
+    optLabel: string;
+  } | null>(null);
 
   // Generate database export string
   const exportDataString = JSON.stringify(tasks, null, 2);
@@ -61,24 +71,32 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
     setTimeout(() => setSaveAlert(false), 2500);
   };
 
-  const handleCopyBackup = () => {
-    navigator.clipboard.writeText(exportDataString);
-    alert('백업 데이터(JSON)가 클립보드에 무사히 복사되었습니다!');
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setPendingRestoreJson(content);
+        setShowRestoreConfirmModal(true);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
-  const handleImport = () => {
-    if (!jsonPaste.trim()) return;
-    const success = onImportData(jsonPaste.trim());
+  const handleExecuteRestore = () => {
+    if (!pendingRestoreJson) return;
+    const success = onImportData(pendingRestoreJson);
     if (success) {
-      setImportStatus('success');
-      setJsonPaste('');
-      setTimeout(() => setImportStatus('idle'), 3000);
-      alert('백업 데이터가 성공적으로 복구되었습니다!!');
+      alert('백업 데이터가 성공적으로 완벽 복구되었습니다!');
     } else {
-      setImportStatus('error');
-      setTimeout(() => setImportStatus('idle'), 3000);
-      alert('데이터 포맷이 잘못되었습니다. 유효한 JSON 배열 형식인지 확인해주세요.');
+      alert('데이터 포맷이 잘못되었습니다. 유효한 해야지 백업 JSON 파일인지 확인해주세요.');
     }
+    setShowRestoreConfirmModal(false);
+    setPendingRestoreJson('');
   };
 
   // Custom Category & Options action mechanics
@@ -148,22 +166,39 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
   };
 
   const handleDeleteOption = (catId: string, optValue: string, optLabel: string) => {
-    if (confirm(`'${optLabel}' 분류를 삭제할까요?`)) {
-      const updated = categories.map((cat) => {
-        if (cat.id === catId) {
-          return {
-            ...cat,
-            options: cat.options.filter((o) => o.value !== optValue)
-          };
-        }
-        return cat;
-      });
-      setCategories(updated);
-      onSaveSettings({
-        ...settings,
-        customTags: updated
-      });
-    }
+    const parentCat = categories.find((c) => c.id === catId);
+    const catLabel = parentCat ? parentCat.label : '분류';
+    setDeleteOptionTarget({
+      catId,
+      catLabel,
+      optValue,
+      optLabel
+    });
+    setShowDeleteOptionModal(true);
+  };
+
+  const executeDeleteOption = () => {
+    if (!deleteOptionTarget) return;
+    const { catId, optValue } = deleteOptionTarget;
+
+    const updated = categories.map((cat) => {
+      if (cat.id === catId) {
+        return {
+          ...cat,
+          options: cat.options.filter((o) => o.value !== optValue)
+        };
+      }
+      return cat;
+    });
+
+    setCategories(updated);
+    onSaveSettings({
+      ...settings,
+      customTags: updated
+    });
+
+    setShowDeleteOptionModal(false);
+    setDeleteOptionTarget(null);
   };
 
   const handleDownloadBackup = () => {
@@ -300,47 +335,38 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
       <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="text-sm font-black text-black mb-3 flex items-center gap-2 uppercase">
           <Database className="w-4 h-4 text-[#FF4D00] stroke-[3]" />
-          JSON 백업 및 데이터 안전 기각
+          JSON 백업 및 데이터 안전 복원
         </h4>
         <p className="text-[11px] text-[#1A1A1A]/85 mb-4 leading-relaxed font-bold">
-          브라우저 내부에 보존되어 있는 실천 데이터를 JSON 파일로 다운로드하여 백업하거나, 클립보드에 복사해둘 수 있습니다. 나중에 이 설정페이지의 가져오기 기능을 통해 원할 때 언제든지 원클릭으로 모든 상태를 무결하게 복원할 수 있습니다.
+          브라우저 내부에 보관 중인 실천 데이터를 JSON 파일로 다운로드하여 백업하거나, 과거에 다운로드한 백업 파일을 직접 실어 안전하게 복원할 수 있습니다.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5">
+        <div className="flex flex-col sm:flex-row gap-3.5">
           {/* Download Button */}
           <button
+            type="button"
             onClick={handleDownloadBackup}
-            className="flex items-center justify-center gap-1.5 bg-yellow-300 hover:bg-yellow-400 text-black py-3 font-black text-xs border-3 border-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-300 hover:bg-yellow-400 text-black py-3 font-black text-xs border-3 border-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
           >
             <Download className="w-4 h-4 stroke-[3]" /> JSON 백업 파일 다운로드 (.json) 📥
           </button>
 
-          {/* Copy Button */}
-          <button
-            onClick={handleCopyBackup}
-            className="flex items-center justify-center gap-1.5 bg-white hover:bg-zinc-100 text-black py-3 font-black text-xs border-3 border-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
-          >
-            클립보드 백업 텍스트 복사 📋
-          </button>
-        </div>
-
-        {/* Import section */}
-        <div className="space-y-2 border-t border-zinc-200 pt-4 text-xs font-bold text-black">
-          <span className="text-[11px] font-black text-black block uppercase">📥 백업 데이터 복원하기</span>
-          <p className="text-[10px] text-zinc-650 mb-2">과거에 백업해 두었던 JSON 텍스트를 그대로 아래에 붙여넣으세요.</p>
-          <textarea
-            placeholder='[ { "id": "task-...", "title": "..." } ] 형식의 백업 데이터를 붙여넣거나 입력하세요...'
-            value={jsonPaste}
-            onChange={(e) => setJsonPaste(e.target.value)}
-            rows={3.5}
-            className="w-full bg-[#F4F4F1] border-3 border-black p-3 text-[10px] font-mono font-bold text-black outline-none"
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".json"
+            onChange={handleFileChange}
+            className="hidden"
           />
+
+          {/* Upload Restore Trigger Button */}
           <button
-            onClick={handleImport}
-            disabled={!jsonPaste.trim()}
-            className="w-full flex items-center justify-center gap-1.5 bg-black hover:bg-zinc-800 disabled:opacity-40 text-white py-3 shadow-[3px_3px_0px_0px_#FF4D00] transition font-black cursor-pointer"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-black hover:bg-zinc-800 text-white py-3 font-black text-xs border-3 border-black shadow-[3px_3px_0px_0px_#FF4D00] active:scale-95 transition cursor-pointer"
           >
-            <Upload className="w-4 h-4 stroke-[3]" /> 복제 백업으로 완벽 복구 수행하기
+            <Upload className="w-4 h-4 stroke-[3]" /> JSON 백업 파일로 복원하기 📦
           </button>
         </div>
       </div>
@@ -349,50 +375,195 @@ export function SettingsView({ settings, tasks, onSaveSettings, onResetToSamples
       <div className="bg-white border-4 border-black p-5 border-rose-500 shadow-[6px_6px_0px_0px_#000]">
         <h4 className="text-sm font-black text-rose-500 mb-2.5 flex items-center gap-2 uppercase">
           <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
-          진단 및 공장 초기화 구역
+          공장 초기화 및 데이터 완전 제거 구역
         </h4>
         
         <div className="space-y-3.5 font-bold text-black">
-          <p className="text-[11px] text-zinc-700 leading-relaxed font-bold">
-            데이터 수치에 오류가 있거나, 새롭게 시뮬레이션을 돌려보고 싶다면 아래 초기화 프로세스를 구동하십시오.
+          <p className="text-[11.5px] text-zinc-700 leading-relaxed font-bold">
+            시스템 오작동이 발생하거나, 모든 실천 상태를 비우고 완전히 제로 베이스에서 다시 시작하고 싶다면 아래 청소 버튼을 수행해 주십시오. 모든 상태 데이터가 안전하게 파괴됩니다.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Reset to Samples */}
-            <button
-              onClick={() => {
-                if (confirm('현재 저장된 모든 자료가 삭제되고 엄선된 3대 미룸 해결 과제(샘플 데이터)로 초기화됩니다. 계속 진행할까요?')) {
-                  onResetToSamples();
-                  alert('샘플 데이터가 완벽하게 복원 및 이식 완료되었습니다.');
-                }
-              }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#fed7aa] border-3 border-black text-black py-3 text-xs font-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
-            >
-              <Database className="w-4 h-4 text-orange-600 stroke-[2.5]" />
-              미룸 샘플 추가하기 (3종 완비)
-            </button>
-
+          <div className="flex flex-col gap-3">
             {/* Clear all */}
             <button
               onClick={() => {
-                if (confirm('모든 데이터가 완전히 소멸되며 최초 상태로 기각됩니다. 정말 초기화 하겠습니까?')) {
-                  localStorage.clear();
-                  localforage.clear().then(() => {
-                    window.location.reload();
-                  }).catch((err) => {
-                    console.error('Failed to clear localforage store', err);
-                    window.location.reload();
-                  });
-                }
+                setResetConfirmText('');
+                setShowResetModal(true);
               }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-rose-200 border-3 border-black text-black py-3 text-xs font-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-1.5 bg-rose-200 hover:bg-rose-300 border-3 border-black text-rose-950 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
             >
               <Trash2 className="w-4 h-4 stroke-[2.5]" />
-              데이터 영구 청소하기
+              로컬 데이터 및 앱 세팅 영구 파괴/청소하기
             </button>
           </div>
         </div>
       </div>
+
+      {/* CUSTOM DATA DESTRUCTION CONFIRMATION MODAL ('해야지' INPUT REQUIRED) */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border-4 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_#FF4D00] space-y-5 relative text-black">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <h4 className="text-sm font-black uppercase text-rose-600 flex items-center gap-1.5">
+                <ShieldAlert className="w-5 h-5 stroke-[3]" />
+                ⚠️ 앱 데이터 영구 청소 확인
+              </h4>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-zinc-800 leading-relaxed">
+                이 작업은 <span className="text-rose-600 font-black underline">절대로 되돌릴 수 없는 영구 소멸</span> 작업입니다. 
+                현재까지 쌓아온 소중한 미뤄둔 일 진행 상태, 행동 개시 로그, 개인 설정 태그 등이 아낌없이 날아가 버립니다.
+              </p>
+              <p className="text-xs font-black text-black bg-rose-50 p-3 border-2 border-dashed border-rose-400">
+                정말 데이터 세팅을 완전히 파괴하고 초기화하시겠습니까? 
+                동의하고 진행하시려면 아래의 입력란에 정확히 <span className="text-rose-600 font-extrabold underline">해야지</span> 라고 입력해 주십시오.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-black text-zinc-700">인증 텍스트 입력</label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="해야지"
+                className="w-full text-center text-sm font-black border-3 border-black bg-[#F4F4F1] p-2.5 shadow-[2px_2px_0px_0px_#000] focus:ring-0 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1.5">
+              {/* Option 1: Execute complete destruction */}
+              <button
+                type="button"
+                disabled={resetConfirmText !== '해야지'}
+                onClick={() => {
+                  localStorage.clear();
+                  localforage.clear()
+                    .then(() => {
+                      window.location.reload();
+                    })
+                    .catch((err) => {
+                      console.error('Failed to clear localforage store', err);
+                      window.location.reload();
+                    });
+                }}
+                className={`w-full inline-flex items-center justify-center gap-1.5 py-3 text-xs font-black border-3 border-black shadow-[3px_3px_0px_0px_#000] transition active:scale-95 ${
+                  resetConfirmText === '해야지'
+                    ? 'bg-rose-500 hover:bg-rose-600 text-white cursor-pointer'
+                    : 'bg-zinc-200 text-zinc-400 cursor-not-allowed opacity-50 shadow-[1.5px_1.5px_0px_0px_#000]'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                정말 모두 삭제하고 초기화하기
+              </button>
+
+              {/* Option 2: Go back cancel */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText('');
+                }}
+                className="w-full bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
+              >
+                ❌ 취소하고 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM CONFIRMATION DIALOG MODAL FOR TAG OPTION DELETION */}
+      {showDeleteOptionModal && deleteOptionTarget && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border-4 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_#000] space-y-5 relative text-black">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <h4 className="text-sm font-black uppercase text-[#FF4D00] flex items-center gap-1.5">
+                <Tag className="w-5 h-5 text-[#FF4D00] stroke-[3]" />
+                태그 분류 삭제 경고
+              </h4>
+            </div>
+
+            <div className="space-y-3 py-1">
+              <p className="text-sm font-black text-black leading-relaxed">
+                {deleteOptionTarget.catLabel}의 {deleteOptionTarget.optLabel} 태그를 삭제하시겠습니까.
+              </p>
+              <p className="text-xs text-zinc-650 leading-relaxed font-bold">
+                이 태그를 제거하면 기존 할 일에 설정된 이 태깅 정보도 함께 무효화 및 제외 처리됩니다.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              {/* Option 1: Delete Option */}
+              <button
+                type="button"
+                onClick={executeDeleteOption}
+                className="w-full inline-flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white py-3 text-xs font-black border-3 border-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+              >
+                삭제하기
+              </button>
+
+              {/* Option 2: Cancel and go back */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteOptionModal(false);
+                  setDeleteOptionTarget(null);
+                }}
+                className="w-full bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
+              >
+                취소하고 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CUSTOM CONFIRMATION DIALOG MODAL FOR FILE BACKUP RESTORE */}
+      {showRestoreConfirmModal && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border-4 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_#FF4D00] space-y-5 relative text-black">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <h4 className="text-sm font-black uppercase text-amber-600 flex items-center gap-1.5">
+                <ShieldAlert className="w-5 h-5 stroke-[3]" />
+                ⚠️ 백업 데이터 복원 주의
+              </h4>
+            </div>
+
+            <div className="space-y-3 py-1">
+              <p className="text-sm font-black text-rose-600 leading-relaxed">
+                현재 보관 중인 모든 정보가 영구적으로 파괴되고 백업 파일의 데이터로 완전히 대체됩니다.
+              </p>
+              <p className="text-xs text-zinc-650 leading-relaxed font-bold">
+                이 작업을 수행하면 지금 진행 중인 할 일 목록, 시간 기록, 상태 정보 등이 백업 시점 상태로 완전히 덮어씌워집니다. 계속 진행하시겠습니까?
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              {/* Option 1: Execute complete overwrite */}
+              <button
+                type="button"
+                onClick={handleExecuteRestore}
+                className="w-full inline-flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white py-3 text-xs font-black border-3 border-black shadow-[3px_3px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+              >
+                기존 정보 모두 지우고 덮어씌워 복원하기 📦
+              </button>
+
+              {/* Option 2: Cancel and go back */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRestoreConfirmModal(false);
+                  setPendingRestoreJson('');
+                }}
+                className="w-full bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
+              >
+                취소하고 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

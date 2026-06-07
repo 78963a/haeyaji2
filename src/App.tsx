@@ -228,7 +228,6 @@ export default function App() {
                 settings={settings}
                 tasks={tasks}
                 onSaveSettings={saveSettings}
-                onResetToSamples={resetToSamples}
                 onImportData={importRawData}
               />
             )}

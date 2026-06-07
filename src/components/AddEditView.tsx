@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskTags, AppSettings } from '../types';
 import { DEFAULT_TAG_CATEGORIES } from '../constants';
-import { Check, Plus, Trash2, ArrowLeft, ClipboardList, Info, HelpCircle } from 'lucide-react';
+import { Check, Plus, Trash2, ArrowLeft, ClipboardList, Info, HelpCircle, AlertTriangle, X } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AddEditViewProps {
@@ -28,6 +28,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
   // Subtask creation state
   const [subtasks, setSubtasks] = useState<string[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Handle Editing mode
   useEffect(() => {
@@ -277,13 +278,8 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
           <div className="pt-6 border-t-3 border-dashed border-black text-center">
             <button
               type="button"
-              onClick={() => {
-                if (confirm('이 과제를 영영 삭제하시겠습니까? 데이터는 복구할 수 없습니다.')) {
-                   onDeleteTask(taskToEdit.id);
-                   onCancel();
-                }
-              }}
-              className="inline-flex items-center gap-1.5 text-xs text-[#FF4D00] font-black hover:underline cursor-pointer"
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-[#FF4D00] font-black hover:underline cursor-pointer bg-transparent border-0"
             >
               <Trash2 className="w-4 h-4 stroke-[3]" /> 이 미뤄둔 일 완전히 지워버리기
             </button>
@@ -291,6 +287,89 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
         )}
 
       </form>
+
+      {/* THREE-WAY DELETE DIALOG MODAL */}
+      {showDeleteModal && taskToEdit && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border-4 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_#FF4D00] space-y-5 relative">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <h4 className="text-sm font-black uppercase text-black flex items-center gap-1.5">
+                <AlertTriangle className="w-5 h-5 text-[#FF4D00] stroke-[3]" />
+                할 일 정리 옵션 선택
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="p-1 border-2 border-black hover:bg-zinc-100 cursor-pointer transition text-black"
+                title="닫기"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-black text-black">
+                선택한 미뤄둔 일: <span className="text-[#FF4D00] underline">"{taskToEdit.title}"</span>
+              </p>
+              <p className="text-xs text-zinc-650 leading-relaxed font-bold">
+                이 할 일을 어떻게 처리할지 아래의 옵션 중 하나를 신중하게 선택해 주세요.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-1">
+              {/* Option 1: Delete completely without saving */}
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteTask(taskToEdit.id);
+                  setShowDeleteModal(false);
+                  onCancel();
+                }}
+                className="w-full text-left bg-rose-100 hover:bg-rose-200 text-rose-700 border-2 border-rose-500 p-3.5 text-xs font-black shadow-[3px_3px_0px_0px_#be123c] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
+              >
+                <span className="flex items-center gap-1 text-[13px]">
+                  🔥 저장하지 않고 완전 삭제
+                </span>
+                <span className="text-[10px] text-rose-600/90 font-medium">
+                  데이터 잔재를 남기지 않고 시스템 내부에서 즉각 영구 소멸시킵니다.
+                </span>
+              </button>
+
+              {/* Option 2: Save to archive and remove from todo list */}
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdateTask({
+                    ...taskToEdit,
+                    status: 'abandoned',
+                    abandonedAt: new Date().toISOString(),
+                    abandonReason: '수정 단계에서 보류 상태로 기록보관소로 수용 결정됨'
+                  });
+                  setShowDeleteModal(false);
+                  onCancel();
+                }}
+                className="w-full text-left bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-500 p-3.5 text-xs font-black shadow-[3px_3px_0px_0px_#b45309] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
+              >
+                <span className="flex items-center gap-1 text-[13px]">
+                  📦 기록보관소에 저장하고 할일에서 치워버리기
+                </span>
+                <span className="text-[10px] text-amber-700/90 font-medium">
+                  성찰을 위한 분석용 보류 흔적으로 남기고, 오늘 해야 할 일 목록에서 제외합니다.
+                </span>
+              </button>
+
+              {/* Option 3: Cancel and go back */}
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full text-center bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
+              >
+                ❌ 취소하고 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
