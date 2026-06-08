@@ -97,11 +97,11 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
       <div className="flex items-center justify-between mb-6">
         <button 
           onClick={onCancel}
-          className="inline-flex items-center gap-1.5 text-xs text-black font-black hover:underline transition cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-sm text-black font-normal hover:underline transition cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 stroke-[3]" /> 뒤로 돌아가기
+          <ArrowLeft className="w-4 h-4 stroke-[2]" /> 뒤로 돌아가기
         </button>
-        <span className="text-xs font-black bg-[#FF4D00] text-white border-2 border-black px-2.5 py-0.5">
+        <span className="text-xs font-normal bg-[#FF4D00] text-white border-2 border-black px-2.5 py-0.5">
           {taskToEdit ? '미룬 일 정밀 조정 중 ⚙️' : '미뤄왔던 숙제 소환 장치 ⚡'}
         </span>
       </div>
@@ -110,7 +110,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
         {/* Step 1: 할 일 입력 */}
         <div className="bg-white p-5 border-4 border-black space-y-4 shadow-[6px_6px_0px_0px_#000]">
           <div>
-            <label className="text-xs font-black text-black block mb-1.5 uppercase">
+            <label className="text-sm font-normal text-black block mb-1.5 uppercase">
               자꾸 마음에 걸려 미루고 있는 일 <span className="text-[#FF4D00]">*</span>
             </label>
             <input
@@ -119,12 +119,12 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
               placeholder="예: 치과 스케일링 예약, 세금 신고 서류 준비 등"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[#F4F4F1] border-3 border-black py-3 px-4 text-xs font-bold text-black outline-none focus:bg-white focus:ring-none"
+              className="w-full bg-[#F4F4F1] border-3 border-black py-3 px-4 text-sm font-normal text-black outline-none focus:bg-white focus:ring-none"
             />
           </div>
 
           <div>
-            <label className="text-xs font-black text-black block mb-1.5 uppercase">
+            <label className="text-sm font-normal text-black block mb-1.5 uppercase">
               조금 더 자세한 속사정 (선택)
             </label>
             <textarea
@@ -132,7 +132,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full bg-[#F4F4F1] border-3 border-black py-3 px-4 text-xs font-bold text-black outline-none focus:bg-white focus:ring-none resize-none"
+              className="w-full bg-[#F4F4F1] border-3 border-black py-3 px-4 text-sm font-normal text-black outline-none focus:bg-white focus:ring-none resize-none"
             />
           </div>
         </div>
@@ -140,14 +140,14 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
         {/* Step 2: 네 가지 특별 태깅 시스템 (한글) */}
         <div className="space-y-5">
           <div className="flex items-center gap-1">
-            <Info className="w-4 h-4 text-[#FF4D00] stroke-[3]" />
-            <h4 className="text-xs font-black text-[#1A1A1A] uppercase">행동 실천력을 높여줄 태그 진단 시스템 (필요 시 선택)</h4>
+            <Info className="w-4 h-4 text-[#FF4D00] stroke-[2]" />
+            <h4 className="text-sm font-normal text-[#1A1A1A] uppercase">행동 실천력을 높여줄 태그 진단 시스템 (필요 시 선택)</h4>
           </div>
 
           {/* Dynamic Categories Rendering */}
           {categories.map((category, index) => (
             <div key={category.id} className="bg-white p-5 border-4 border-black shadow-[6px_6px_0px_0px_#000]">
-              <span className="text-xs font-black text-black block mb-4 leading-relaxed">
+              <span className="text-sm font-normal text-black block mb-4 leading-relaxed">
                 {index + 1}. {category.label}
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -170,20 +170,20 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                       }}
                       className={`p-3 text-left transition relative cursor-pointer ${
                         active 
-                          ? 'bg-yellow-300 border-3 border-black text-black font-black shadow-[2px_2px_0px_0px_#000]' 
+                          ? 'bg-yellow-300 border-3 border-black text-black font-normal shadow-[2px_2px_0px_0px_#000]' 
                           : 'bg-white border-2 border-black text-zinc-650 hover:bg-zinc-50'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-extrabold text-xs">
+                      <div className="flex items-center gap-1.5 font-normal text-sm">
                         {option.icon && <span className="text-xl filter drop-shadow-[1px_1px_0_#000]">{option.icon}</span>}
                         {option.label}
                       </div>
                       {option.desc && (
-                        <div className="text-[10px] text-zinc-900 mt-1 leading-tight font-medium">
+                        <div className="text-xs text-zinc-900 mt-1 leading-tight font-normal">
                           {option.desc}
                         </div>
                       )}
-                      {active && <span className="absolute top-2 right-2 text-black font-black text-xs">✓</span>}
+                      {active && <span className="absolute top-2 right-2 text-black font-normal text-xs">✓</span>}
                     </button>
                   );
                 })}
@@ -196,13 +196,13 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
         <div className="bg-white p-5 border-4 border-black space-y-4 shadow-[6px_6px_0px_0px_#000]">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-black text-black flex items-center gap-1">
-                <ClipboardList className="w-4 h-4 text-[#FF4D00] stroke-[3]" />
+              <label className="text-sm font-normal text-black flex items-center gap-1">
+                <ClipboardList className="w-4 h-4 text-[#FF4D00] stroke-[2]" />
                 프로젝트 잘개 쪼개기 (세부 행동 플랜)
               </label>
-              <span className="text-[10px] font-bold bg-yellow-300 border border-black px-1.5 py-0.5 text-black">원하는 만큼 쪼개세요!</span>
+              <span className="text-xs font-normal bg-yellow-300 border border-black px-1.5 py-0.5 text-black">원하는 만큼 쪼개세요!</span>
             </div>
-            <p className="text-[11px] text-zinc-700 mb-2 font-bold leading-relaxed">
+            <p className="text-xs text-zinc-700 mb-2 font-normal leading-relaxed">
               일이 너무 커 보이면 미루게 됩니다. 지금 딱 2~3개 단계로 잘게 부숴보세요. 실천율이 극대화됩니다!
             </p>
             
@@ -218,14 +218,14 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                     handleAddSubtask();
                   }
                 }}
-                className="flex-1 bg-[#F4F4F1] border-3 border-black py-2.5 px-3 text-xs text-black font-bold outline-none focus:bg-white"
+                className="flex-1 bg-[#F4F4F1] border-3 border-black py-2.5 px-3 text-sm text-black font-normal outline-none focus:bg-white"
               />
               <button
                 type="button"
                 onClick={handleAddSubtask}
                 className="h-10 w-10 inline-flex items-center justify-center bg-[#FF4D00] text-white border-3 border-black shadow-[2px_2px_0px_0px_#000] active:scale-95 cursor-pointer"
               >
-                <Plus className="w-5 h-5 stroke-[3]" />
+                <Plus className="w-5 h-5 stroke-[2]" />
               </button>
             </div>
           </div>
@@ -238,15 +238,15 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                   key={index}
                   className="flex items-center justify-between bg-white px-3 py-2 border-2 border-black"
                 >
-                  <span className="text-xs text-black font-bold">
-                    <span className="text-[#FF4D00] font-black mr-1.5">{index + 1}.</span> {st}
+                  <span className="text-sm text-black font-normal">
+                    <span className="text-[#FF4D00] font-normal mr-1.5">{index + 1}.</span> {st}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleRemoveSubtask(index)}
                     className="text-[#FF4D00] hover:text-black p-1 cursor-pointer"
                   >
-                    <Trash2 className="w-4 h-4 stroke-[2.5]" />
+                    <Trash2 className="w-4 h-4 stroke-[2]" />
                   </button>
                 </div>
               ))}
@@ -259,7 +259,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-white hover:bg-zinc-100 text-black font-black py-4 border-3 border-black text-xs shadow-[4px_4px_0px_0px_#000] active:scale-95 cursor-pointer"
+            className="flex-1 bg-white hover:bg-zinc-100 text-black font-normal py-4 border-3 border-black text-sm shadow-[4px_4px_0px_0px_#000] active:scale-95 cursor-pointer"
           >
             취소하기
           </button>
@@ -267,7 +267,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
           <button
             type="submit"
             disabled={title.trim() === ''}
-            className="flex-2 bg-[#FF4D00] text-white font-black py-4 border-3 border-black text-xs shadow-[4px_4px_0px_0px_#000] active:scale-95 disabled:opacity-40 cursor-pointer"
+            className="flex-2 bg-[#FF4D00] text-white font-normal py-4 border-3 border-black text-sm shadow-[4px_4px_0px_0px_#000] active:scale-95 disabled:opacity-40 cursor-pointer"
           >
             {taskToEdit ? '정밀 수정사항 반영하기 ✍️' : '소환 시스템에 등록하기 ⚡'}
           </button>
@@ -279,9 +279,9 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-[#FF4D00] font-black hover:underline cursor-pointer bg-transparent border-0"
+              className="inline-flex items-center gap-1.5 text-sm text-[#FF4D00] font-normal hover:underline cursor-pointer bg-transparent border-0"
             >
-              <Trash2 className="w-4 h-4 stroke-[3]" /> 이 미뤄둔 일 완전히 지워버리기
+              <Trash2 className="w-4 h-4 stroke-[2]" /> 이 미뤄둔 일 완전히 지워버리기
             </button>
           </div>
         )}
@@ -293,8 +293,8 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
         <div className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white border-4 border-black p-6 max-w-md w-full shadow-[8px_8px_0px_0px_#FF4D00] space-y-5 relative">
             <div className="flex items-center justify-between border-b-2 border-black pb-3">
-              <h4 className="text-sm font-black uppercase text-black flex items-center gap-1.5">
-                <AlertTriangle className="w-5 h-5 text-[#FF4D00] stroke-[3]" />
+              <h4 className="text-sm font-normal uppercase text-black flex items-center gap-1.5">
+                <AlertTriangle className="w-5 h-5 text-[#FF4D00] stroke-[2]" />
                 할 일 정리 옵션 선택
               </h4>
               <button
@@ -303,15 +303,15 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                 className="p-1 border-2 border-black hover:bg-zinc-100 cursor-pointer transition text-black"
                 title="닫기"
               >
-                <X className="w-4 h-4 stroke-[2.5]" />
+                <X className="w-4 h-4 stroke-[2]" />
               </button>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-black text-black">
+              <p className="text-sm font-normal text-black">
                 선택한 미뤄둔 일: <span className="text-[#FF4D00] underline">"{taskToEdit.title}"</span>
               </p>
-              <p className="text-xs text-zinc-650 leading-relaxed font-bold">
+              <p className="text-sm text-zinc-650 leading-relaxed font-normal">
                 이 할 일을 어떻게 처리할지 아래의 옵션 중 하나를 신중하게 선택해 주세요.
               </p>
             </div>
@@ -325,12 +325,12 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                   setShowDeleteModal(false);
                   onCancel();
                 }}
-                className="w-full text-left bg-rose-100 hover:bg-rose-200 text-rose-700 border-2 border-rose-500 p-3.5 text-xs font-black shadow-[3px_3px_0px_0px_#be123c] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
+                className="w-full text-left bg-rose-100 hover:bg-rose-200 text-rose-700 border-2 border-rose-500 p-3.5 text-sm font-normal shadow-[3px_3px_0px_0px_#be123c] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
               >
-                <span className="flex items-center gap-1 text-[13px]">
+                <span className="flex items-center gap-1 text-sm">
                   🔥 저장하지 않고 완전 삭제
                 </span>
-                <span className="text-[10px] text-rose-600/90 font-medium">
+                <span className="text-xs text-rose-600/90 font-normal">
                   데이터 잔재를 남기지 않고 시스템 내부에서 즉각 영구 소멸시킵니다.
                 </span>
               </button>
@@ -348,12 +348,12 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
                   setShowDeleteModal(false);
                   onCancel();
                 }}
-                className="w-full text-left bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-500 p-3.5 text-xs font-black shadow-[3px_3px_0px_0px_#b45309] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
+                className="w-full text-left bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-500 p-3.5 text-sm font-normal shadow-[3px_3px_0px_0px_#b45309] active:scale-[0.98] transition cursor-pointer flex flex-col gap-0.5"
               >
-                <span className="flex items-center gap-1 text-[13px]">
+                <span className="flex items-center gap-1 text-sm">
                   📦 기록보관소에 저장하고 할일에서 치워버리기
                 </span>
-                <span className="text-[10px] text-amber-700/90 font-medium">
+                <span className="text-xs text-amber-700/90 font-normal">
                   성찰을 위한 분석용 보류 흔적으로 남기고, 오늘 해야 할 일 목록에서 제외합니다.
                 </span>
               </button>
@@ -362,7 +362,7 @@ export function AddEditView({ taskToEdit, settings, onAddTask, onUpdateTask, onD
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="w-full text-center bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-xs font-black shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
+                className="w-full text-center bg-white hover:bg-zinc-100 text-zinc-700 border-2 border-zinc-400 py-3 text-sm font-normal shadow-[3px_3px_0px_0px_#6b7280] active:scale-[0.98] transition cursor-pointer"
               >
                 ❌ 취소하고 돌아가기
               </button>

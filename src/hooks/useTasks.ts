@@ -169,6 +169,7 @@ export function useTasks() {
       title: title.trim(),
       description: description.trim() || undefined,
       createdAt: customCreatedAt || new Date().toISOString(),
+      lastOperatedAt: new Date().toISOString(),
       status: 'pending',
       timeSpent: 0,
       tags,
@@ -181,7 +182,7 @@ export function useTasks() {
   };
 
   const updateTask = (updatedTask: Task) => {
-    const updated = tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+    const updated = tasks.map((t) => (t.id === updatedTask.id ? { ...updatedTask, lastOperatedAt: new Date().toISOString() } : t));
     saveTasksToLocalForage(updated);
   };
 
@@ -208,7 +209,8 @@ export function useTasks() {
         return {
           ...t,
           status: 'active' as const,
-          startedAt: t.startedAt || new Date().toISOString()
+          startedAt: t.startedAt || new Date().toISOString(),
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -222,7 +224,7 @@ export function useTasks() {
   const pauseTask = (id: string) => {
     const updated = tasks.map((t) => {
       if (t.id === id) {
-        return { ...t, status: 'pending' as const };
+        return { ...t, status: 'pending' as const, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -242,7 +244,8 @@ export function useTasks() {
           ...t,
           status: 'completed' as const,
           completedAt: new Date().toISOString(),
-          subtasks: resolvedSubtasks
+          subtasks: resolvedSubtasks,
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -262,7 +265,29 @@ export function useTasks() {
           ...t,
           status: 'abandoned' as const,
           abandonedAt: new Date().toISOString(),
-          abandonReason: reason || '의지 소모로 일시 중단'
+          abandonReason: reason || '의지 소모로 일시 중단',
+          lastOperatedAt: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+
+    if (activeTaskId === id) {
+      setActiveTaskId(null);
+      localforage.removeItem('haeyaji_active_task_id');
+    }
+    saveTasksToLocalForage(updated);
+  };
+
+  const giveUpTask = (id: string, reason: string) => {
+    const updated = tasks.map((t) => {
+      if (t.id === id) {
+        return {
+          ...t,
+          status: 'given_up' as const,
+          abandonedAt: new Date().toISOString(), // reuse this for ease of display or filtering
+          abandonReason: reason || '의지 부재로 포기',
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -292,7 +317,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -312,7 +337,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -331,7 +356,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -350,7 +375,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -373,7 +398,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -392,7 +417,7 @@ export function useTasks() {
           }
           return st;
         });
-        return { ...t, subtasks: nextSub };
+        return { ...t, subtasks: nextSub, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -426,7 +451,8 @@ export function useTasks() {
         return { 
           ...t, 
           subtasks: nextSub,
-          timeSpent: t.timeSpent + addedDuration
+          timeSpent: t.timeSpent + addedDuration,
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -443,7 +469,7 @@ export function useTasks() {
           title: title.trim(),
           completed: false
         };
-        return { ...t, subtasks: [...t.subtasks, newSt] };
+        return { ...t, subtasks: [...t.subtasks, newSt], lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -453,7 +479,7 @@ export function useTasks() {
   const removeSubtaskFromTask = (taskId: string, subtaskId: string) => {
     const updated = tasks.map((t) => {
       if (t.id === taskId) {
-        return { ...t, subtasks: t.subtasks.filter((st) => st.id !== subtaskId) };
+        return { ...t, subtasks: t.subtasks.filter((st) => st.id !== subtaskId), lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -463,7 +489,7 @@ export function useTasks() {
   const cheerTask = (id: string) => {
     const updated = tasks.map((t) => {
       if (t.id === id) {
-        return { ...t, cheersCount: t.cheersCount + 1 };
+        return { ...t, cheersCount: t.cheersCount + 1, lastOperatedAt: new Date().toISOString() };
       }
       return t;
     });
@@ -481,7 +507,8 @@ export function useTasks() {
         };
         return {
           ...t,
-          actionLogs: [...logs, newLog]
+          actionLogs: [...logs, newLog],
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -512,7 +539,8 @@ export function useTasks() {
         return {
           ...t,
           timeSpent: t.timeSpent + addedDuration,
-          actionLogs: nextLogs
+          actionLogs: nextLogs,
+          lastOperatedAt: new Date().toISOString()
         };
       }
       return t;
@@ -534,6 +562,7 @@ export function useTasks() {
     pauseTask,
     completeTask,
     abandonTask,
+    giveUpTask,
     toggleSubtask,
     startSubtask,
     pauseSubtask,

@@ -13,7 +13,7 @@ export interface SubTask {
   isPaused?: boolean;
 }
 
-export type TaskStatus = 'pending' | 'active' | 'completed' | 'abandoned';
+export type TaskStatus = 'pending' | 'active' | 'completed' | 'abandoned' | 'given_up';
 
 // Categories defining user's procrastinated thoughts and habits
 export type TagCreatedWhen = 'today' | 'week' | 'week_plus' | 'month' | 'year_under' | 'year_plus' | 'distant';
@@ -42,6 +42,7 @@ export interface Task {
   title: string;
   description?: string;
   createdAt: string; // ISO String
+  lastOperatedAt?: string; // ISO String of the most recent user action on the task
   startedAt?: string; // ISO String
   completedAt?: string; // ISO String
   abandonedAt?: string; // ISO String
