@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import localforage from 'localforage';
-import { Task, TaskTags, SubTask, AppSettings } from '../types';
+import { Task, TaskTags, SubTask, AppSettings, AppEvent } from '../types';
 import { SAMPLE_TASKS, DEFAULT_TAG_CATEGORIES } from '../constants';
 
 // Configure localforage for IndexedDB storage
@@ -22,6 +22,7 @@ export function useTasks() {
     customTags: DEFAULT_TAG_CATEGORIES
   });
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [activityEvents, setActivityEvents] = useState<AppEvent[]>([]);
 
   // Reference to hold live ticking intervals
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -100,9 +101,66 @@ export function useTasks() {
           });
         }
 
+        // Load or seed activity events
+        const savedEvents = await localforage.getItem<AppEvent[]>('haeyaji_activity_events');
+        let finalEvents: AppEvent[] = [];
+        if (savedEvents) {
+          finalEvents = savedEvents;
+        } else {
+          // Seed from finalTasks
+          const seeded: AppEvent[] = [];
+          finalTasks.forEach((t) => {
+            seeded.push({
+              id: `seed-add-${t.id}`,
+              type: 'add_task',
+              taskId: t.id,
+              taskTitle: t.title,
+              timestamp: t.createdAt
+            });
+            t.subtasks.forEach((st, idx) => {
+              seeded.push({
+                id: `seed-add-sub-${t.id}-${idx}`,
+                type: 'add_subtask',
+                taskId: t.id,
+                taskTitle: t.title,
+                timestamp: t.createdAt
+              });
+              if (st.completed && st.completedAt) {
+                seeded.push({
+                  id: `seed-comp-sub-${t.id}-${st.id}`,
+                  type: 'complete_subtask',
+                  taskId: t.id,
+                  taskTitle: t.title,
+                  timestamp: st.completedAt
+                });
+              }
+            });
+            if (t.status === 'completed' && t.completedAt) {
+              seeded.push({
+                id: `seed-comp-${t.id}`,
+                type: 'complete_task',
+                taskId: t.id,
+                taskTitle: t.title,
+                timestamp: t.completedAt
+              });
+            } else if ((t.status === 'abandoned' || t.status === 'given_up') && t.abandonedAt) {
+              seeded.push({
+                id: `seed-ab-${t.id}`,
+                type: t.status === 'abandoned' ? 'abandon_task' : 'give_up_task',
+                taskId: t.id,
+                taskTitle: t.title,
+                timestamp: t.abandonedAt
+              });
+            }
+          });
+          finalEvents = seeded;
+          await localforage.setItem('haeyaji_activity_events', seeded);
+        }
+
         setTasks(finalTasks);
         setActiveTaskId(finalActiveTaskId);
         setSettings(finalSettings);
+        setActivityEvents(finalEvents);
       } catch (err) {
         console.error('Error during useTasks localforage initialization', err);
         setTasks(SAMPLE_TASKS);
@@ -113,6 +171,25 @@ export function useTasks() {
 
     loadInitialData();
   }, []);
+
+  // Help log a user activity contribution
+  const logActivity = (type: AppEvent['type'], taskId?: string, optionalTitle?: string) => {
+    const title = optionalTitle || tasks.find(t => t.id === taskId)?.title || '';
+    const newEvent: AppEvent = {
+      id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type,
+      taskId,
+      taskTitle: title,
+      timestamp: new Date().toISOString()
+    };
+    setActivityEvents(prev => {
+      const next = [...prev, newEvent];
+      localforage.setItem('haeyaji_activity_events', next).catch(err => {
+        console.error('Failed to log activity event', err);
+      });
+      return next;
+    });
+  };
 
   // 2. Persistent saves upon state changes utilizing localforage
   const saveTasksToLocalForage = (newTasks: Task[]) => {
@@ -179,11 +256,16 @@ export function useTasks() {
 
     const updated = [newTask, ...tasks];
     saveTasksToLocalForage(updated);
+    logActivity('add_task', newTask.id, newTask.title);
+    newSub.forEach(() => {
+      logActivity('add_subtask', newTask.id, newTask.title);
+    });
   };
 
   const updateTask = (updatedTask: Task) => {
     const updated = tasks.map((t) => (t.id === updatedTask.id ? { ...updatedTask, lastOperatedAt: new Date().toISOString() } : t));
     saveTasksToLocalForage(updated);
+    logActivity('edit_task', updatedTask.id, updatedTask.title);
   };
 
   const deleteTask = (id: string) => {
@@ -256,6 +338,16 @@ export function useTasks() {
       localforage.removeItem('haeyaji_active_task_id');
     }
     saveTasksToLocalForage(updated);
+
+    const t = tasks.find((x) => x.id === id);
+    if (t) {
+      logActivity('complete_task', id, t.title);
+      t.subtasks.forEach((st) => {
+        if (!st.completed) {
+          logActivity('complete_subtask', id, t.title);
+        }
+      });
+    }
   };
 
   const abandonTask = (id: string, reason: string) => {
@@ -277,6 +369,11 @@ export function useTasks() {
       localforage.removeItem('haeyaji_active_task_id');
     }
     saveTasksToLocalForage(updated);
+
+    const t = tasks.find((x) => x.id === id);
+    if (t) {
+      logActivity('abandon_task', id, t.title);
+    }
   };
 
   const giveUpTask = (id: string, reason: string) => {
@@ -298,9 +395,17 @@ export function useTasks() {
       localforage.removeItem('haeyaji_active_task_id');
     }
     saveTasksToLocalForage(updated);
+
+    const t = tasks.find((x) => x.id === id);
+    if (t) {
+      logActivity('give_up_task', id, t.title);
+    }
   };
 
   const toggleSubtask = (taskId: string, subtaskId: string) => {
+    const tCheck = tasks.find((x) => x.id === taskId);
+    const stCheck = tCheck?.subtasks.find((x) => x.id === subtaskId);
+    
     const updated = tasks.map((t) => {
       if (t.id === taskId) {
         const nextSub = t.subtasks.map((st) => {
@@ -322,6 +427,10 @@ export function useTasks() {
       return t;
     });
     saveTasksToLocalForage(updated);
+
+    if (tCheck && stCheck && !stCheck.completed) {
+      logActivity('complete_subtask', taskId, tCheck.title);
+    }
   };
 
   const startSubtask = (taskId: string, subtaskId: string) => {
@@ -458,6 +567,11 @@ export function useTasks() {
       return t;
     });
     saveTasksToLocalForage(updated);
+
+    const t = tasks.find((x) => x.id === taskId);
+    if (t) {
+      logActivity('complete_subtask', taskId, t.title);
+    }
   };
 
   const addSubtaskToTask = (taskId: string, title: string) => {
@@ -474,6 +588,11 @@ export function useTasks() {
       return t;
     });
     saveTasksToLocalForage(updated);
+
+    const t = tasks.find((x) => x.id === taskId);
+    if (t) {
+      logActivity('add_subtask', taskId, t.title);
+    }
   };
 
   const removeSubtaskFromTask = (taskId: string, subtaskId: string) => {
@@ -554,6 +673,7 @@ export function useTasks() {
     activeTaskId,
     activeTask: tasks.find((t) => t.id === activeTaskId) || null,
     settings,
+    activityEvents,
     saveSettings: saveSettingsToLocalForage,
     addTask,
     updateTask,

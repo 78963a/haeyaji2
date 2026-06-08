@@ -7,12 +7,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTasks } from './hooks/useTasks';
 import { HomeView } from './components/HomeView';
 import { AddEditView } from './components/AddEditView';
-import { HistoryView } from './components/HistoryView';
+import { AnalyticsView } from './components/AnalyticsView';
+import { ArchiveView } from './components/ArchiveView';
 import { SettingsView } from './components/SettingsView';
 import { ActiveFocusView } from './components/ActiveFocusView';
 import { Task } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Plus, Settings, Archive, Clock, Sparkles, Flame, Dices, Search, Filter, AlertTriangle } from 'lucide-react';
+import { Home, Plus, Settings, Archive, Clock, Sparkles, Flame, Dices, Search, Filter, AlertTriangle, BarChart2 } from 'lucide-react';
 import { formatKoreanDate, getElapsedHumanized, getDurationElapsedText, getDaysElapsed } from './utils/dateUtils';
 import { TAG_CREATED_WHEN_MAP, DEFAULT_TAG_CATEGORIES } from './constants';
 
@@ -45,11 +46,12 @@ export default function App() {
     startActivityLog,
     endActivityLog,
     resetToSamples,
-    importRawData
+    importRawData,
+    activityEvents
   } = useTasks();
 
-  // Navigation: 'home' | 'add' | 'history' | 'settings' | 'active'
-  const [activeView, setActiveView] = useState<'home' | 'add' | 'history' | 'settings' | 'active'>('home');
+  // Navigation: 'home' | 'add' | 'analytics' | 'archive' | 'settings' | 'active'
+  const [activeView, setActiveView] = useState<'home' | 'add' | 'analytics' | 'archive' | 'settings' | 'active'>('home');
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<null | 'unstarted' | 'inprogress' | 'completed'>(null);
   const [urgeIndex, setUrgeIndex] = useState(0);
@@ -375,8 +377,15 @@ export default function App() {
               />
             )}
 
-            {activeView === 'history' && (
-              <HistoryView
+            {activeView === 'analytics' && (
+              <AnalyticsView
+                tasks={tasks}
+                activityEvents={activityEvents}
+              />
+            )}
+
+            {activeView === 'archive' && (
+              <ArchiveView
                 tasks={tasks}
                 onStartTask={handleStartTaskAndRedirect}
                 onDeleteTask={deleteTask}
@@ -443,15 +452,15 @@ export default function App() {
             <span className="text-xs">홈</span>
           </button>
 
-          {/* COMPLETED/ABANDONED HISTORY BTN */}
+          {/* ANALYTICS VIEW BTN */}
           <button
-            onClick={() => setActiveView('history')}
+            onClick={() => setActiveView('analytics')}
             className={`flex flex-col items-center gap-0.5 p-2 focus:outline-none transition-all cursor-pointer ${
-              activeView === 'history' ? 'text-[#FF4D00] font-black scale-105' : 'text-[#1A1A1A]/60 hover:text-black font-semibold'
+              activeView === 'analytics' ? 'text-[#FF4D00] font-black scale-105' : 'text-[#1A1A1A]/60 hover:text-black font-semibold'
             }`}
           >
-            <Archive className={`w-5.5 h-5.5 ${activeView === 'history' ? 'stroke-[3]' : 'stroke-[2]'}`} />
-            <span className="text-xs">기록</span>
+            <BarChart2 className={`w-5.5 h-5.5 ${activeView === 'analytics' ? 'stroke-[3]' : 'stroke-[2]'}`} />
+            <span className="text-xs">분석</span>
           </button>
 
           {/* ADD TASK COMPACT FLOATING BAR (CENTRAL) */}
@@ -463,14 +472,15 @@ export default function App() {
             <Plus className="w-7 h-7 stroke-[4]" />
           </button>
 
-          {/* COMPANION SHORTCUT TO ACTIVE FOCUS VIEW IF EXISTS (Neutralized) */}
+          {/* ARCHIVE VIEW BTN */}
           <button
-            onClick={() => {}}
-            className="flex flex-col items-center gap-0.5 p-2 focus:outline-none transition-all cursor-not-allowed text-[#1A1A1A]/40 font-semibold"
-            title="미개발 기능 수록 예정지"
+            onClick={() => setActiveView('archive')}
+            className={`flex flex-col items-center gap-0.5 p-2 focus:outline-none transition-all cursor-pointer ${
+              activeView === 'archive' ? 'text-[#FF4D00] font-black scale-105' : 'text-[#1A1A1A]/60 hover:text-black font-semibold'
+            }`}
           >
-            <Flame className="w-5.5 h-5.5 stroke-[2]" />
-            <span className="text-xs">집중</span>
+            <Archive className={`w-5.5 h-5.5 ${activeView === 'archive' ? 'stroke-[3]' : 'stroke-[2]'}`} />
+            <span className="text-xs">보관</span>
           </button>
 
           {/* SETTINGS NAVIGATION BTN */}

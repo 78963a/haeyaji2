@@ -78,3 +78,12 @@ export interface TagCategory {
 export interface AppSettings {
   customTags?: TagCategory[];
 }
+
+export interface AppEvent {
+  id: string;
+  type: 'add_task' | 'add_subtask' | 'complete_subtask' | 'complete_task' | 'edit_task' | 'abandon_task' | 'give_up_task';
+  taskId?: string;
+  taskTitle?: string;
+  timestamp: string; // ISO string
+}
+

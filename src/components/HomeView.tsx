@@ -14,7 +14,7 @@ interface HomeViewProps {
   tasks: Task[];
   settings: AppSettings;
   onStartTask: (id: string) => void;
-  onSelectView: (view: 'home' | 'add' | 'history' | 'settings' | 'active') => void;
+  onSelectView: (view: 'home' | 'add' | 'analytics' | 'archive' | 'settings' | 'active') => void;
   onSelectTaskToEdit?: (task: Task) => void;
   urgeIndex?: number;
   onSetUrgeIndex?: React.Dispatch<React.SetStateAction<number>>;

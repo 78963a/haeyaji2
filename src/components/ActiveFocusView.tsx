@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, AppSettings, SubTask } from '../types';
-import { Play, Pause, CheckCircle, XCircle, AlertTriangle, Plus, Sliders, Trash2, Edit2, RotateCcw, X, Check } from 'lucide-react';
+import { Play, Pause, CheckCircle, XCircle, AlertTriangle, Plus, Sliders, Trash2, Edit2, RotateCcw, X, Check, Copy } from 'lucide-react';
 import { DEFAULT_TAG_CATEGORIES } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatKoreanDate, getDaysElapsed, getDurationElapsedText, getFriendlyDaysAgo } from '../utils/dateUtils';
@@ -574,6 +574,17 @@ export function ActiveFocusView({
                             완료 취소 🔄
                           </button>
                         )}
+
+                        {/* Copy button */}
+                        <button
+                          type="button"
+                          onClick={() => onAddSubtask(task.id, st.title)}
+                          className="bg-white hover:bg-[#F4F4F1] text-zinc-800 border-2 border-black text-xs font-normal py-1 px-2 shadow-[1.5px_1.5px_0px_0px_#000] active:scale-95 transition cursor-pointer flex items-center gap-0.5"
+                          title="이 행동 똑같이 복사하기 (시작전 상태로 밑에 추가)"
+                        >
+                          <Copy className="w-2.5 h-2.5 text-zinc-650 stroke-[2.5]" />
+                          복사
+                        </button>
 
                         {/* Edit/Delete button */}
                         <button
