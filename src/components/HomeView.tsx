@@ -60,7 +60,7 @@ export function HomeView({
     return Math.abs(hash) / 2147483647;
   };
 
-  const isDefaultState = !searchTerm && Object.keys(filterTags).length === 0 && sortBy === 'severity' && (urgeIndex === undefined || urgeIndex === 0);
+  const isDefaultState = !searchTerm && Object.keys(filterTags).length === 0 && sortBy === 'severity';
 
   // Custom renderer for subtasks summary matching user requested logic:
   // 1. Most recently completed subtask (if any)
@@ -136,16 +136,6 @@ export function HomeView({
   const activeUrgeIndex = urgeIndex !== undefined ? urgeIndex : localUrgeIndex;
   const activeSetUrgeIndex = onSetUrgeIndex || setLocalUrgeIndex;
 
-  const randomUrgedTask = useMemo(() => {
-    if (pendingTasks.length === 0) return null;
-    return pendingTasks[(activeUrgeIndex) % pendingTasks.length];
-  }, [pendingTasks, activeUrgeIndex]);
-
-  // Cheering phrase associated with random urged task
-  const randomCheerMessage = useMemo(() => {
-    const seed = activeUrgeIndex + (randomUrgedTask ? randomUrgedTask.title.length : 0);
-    return CHEER_MESSAGES[seed % CHEER_MESSAGES.length];
-  }, [activeUrgeIndex, randomUrgedTask]);
 
   // Calculate urgency metrics or index (Procrastination Severity Index)
   const getProcrastinatedLevel = (task: Task) => {
@@ -226,6 +216,7 @@ export function HomeView({
       return matchesSearch && matchesTags;
     });
 
+    let sortedList: Task[] = [];
     if (isDefaultState && list.length > 0) {
       // Find the most recently operated task in this list based on lastOperatedAt or createdAt
       const sortedByRecency = [...list].sort((a, b) => {
@@ -243,60 +234,70 @@ export function HomeView({
         return randA - randB;
       });
       
-      return [mostRecent, ...shuffledOthers];
+      sortedList = [mostRecent, ...shuffledOthers];
+    } else {
+      // Apply Sorting
+      sortedList = [...list].sort((a, b) => {
+        if (sortBy === 'oldest') {
+          const scoreA = getOldScore(a);
+          const scoreB = getOldScore(b);
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA; // More days = oldest first
+          }
+          // If equal, sort by task registration order (earliest first)
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        
+        if (sortBy === 'newest') {
+          const scoreA = getOldScore(a);
+          const scoreB = getOldScore(b);
+          if (scoreA !== scoreB) {
+            return scoreA - scoreB; // Fewer days = newest first
+          }
+          // If equal, sort by task registration order (latest first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        
+        if (sortBy === 'recently_touched') {
+          const timeA = getLastCompletedTime(a);
+          const timeB = getLastCompletedTime(b);
+          if (timeA !== timeB) {
+            return timeB - timeA; // Latest completed times first
+          }
+          // Fallback to task registration order (latest first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        
+        if (sortBy === 'longest_untouched') {
+          const timeA = getLastCompletedTime(a);
+          const timeB = getLastCompletedTime(b);
+          if (timeA !== timeB) {
+            return timeA - timeB; // Oldest completed / untouched (0) first
+          }
+          // Fallback to task registration order (earliest first)
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+
+        // Default: severity score sorting
+        const sevA = getProcrastinatedLevel(a);
+        const sevB = getProcrastinatedLevel(b);
+        if (sevA !== sevB) {
+          return sevB - sevA;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
     }
 
-    // Apply Sorting
-    return [...list].sort((a, b) => {
-      if (sortBy === 'oldest') {
-        const scoreA = getOldScore(a);
-        const scoreB = getOldScore(b);
-        if (scoreA !== scoreB) {
-          return scoreB - scoreA; // More days = oldest first
-        }
-        // If equal, sort by task registration order (earliest first)
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      
-      if (sortBy === 'newest') {
-        const scoreA = getOldScore(a);
-        const scoreB = getOldScore(b);
-        if (scoreA !== scoreB) {
-          return scoreA - scoreB; // Fewer days = newest first
-        }
-        // If equal, sort by task registration order (latest first)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-      
-      if (sortBy === 'recently_touched') {
-        const timeA = getLastCompletedTime(a);
-        const timeB = getLastCompletedTime(b);
-        if (timeA !== timeB) {
-          return timeB - timeA; // Latest completed times first
-        }
-        // Fallback to task registration order (latest first)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-      
-      if (sortBy === 'longest_untouched') {
-        const timeA = getLastCompletedTime(a);
-        const timeB = getLastCompletedTime(b);
-        if (timeA !== timeB) {
-          return timeA - timeB; // Oldest completed / untouched (0) first
-        }
-        // Fallback to task registration order (earliest first)
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
+    // Move the randomly chosen task to the top if the dice feature is activated (activeUrgeIndex > 0)
+    if (activeUrgeIndex > 0 && sortedList.length > 0) {
+      const selectedIndex = activeUrgeIndex % sortedList.length;
+      const selectedTask = sortedList[selectedIndex];
+      const remainingTasks = sortedList.filter(t => t.id !== selectedTask.id);
+      return [selectedTask, ...remainingTasks];
+    }
 
-      // Default: severity score sorting
-      const sevA = getProcrastinatedLevel(a);
-      const sevB = getProcrastinatedLevel(b);
-      if (sevA !== sevB) {
-        return sevB - sevA;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [pendingTasks, searchTerm, filterTags, sortBy, urgeIndex, sessionSeed, isDefaultState]);
+    return sortedList;
+  }, [pendingTasks, searchTerm, filterTags, sortBy, activeUrgeIndex, sessionSeed, isDefaultState]);
 
   const getSeverityBadge = (score: number) => {
     if (score >= 12) return { text: '🚨 특수 경보 - 고인물 일', class: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
@@ -308,118 +309,6 @@ export function HomeView({
   return (
     <div className="space-y-8 pb-24">
       
-      {/* 1. RANDOM PROCRASTINATION URGER ("해야지 해야지 하고 안 한 일 돌려보기") */}
-      <AnimatePresence mode="wait">
-        {!isDefaultState && (
-          randomUrgedTask ? (
-            <motion.button 
-              key={randomUrgedTask.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              onClick={() => onStartTask(randomUrgedTask.id)}
-              className="w-full text-left relative bg-white border-4 border-black p-6 md:p-8 shadow-[8px_8px_0px_0px_#000] overflow-hidden block hover:bg-[#FFFDF6] cursor-pointer group hover:shadow-[5px_5px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-200"
-            >
-              {/* Visual background lights */}
-              <div className="absolute top-0 right-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-[#FF4D00]/10 pointer-events-none filter blur-xl" />
-
-              {/* Simplified trajectory info (one-line) - Moved ABOVE title, no box, styled highlights */}
-              <p className="text-base font-normal text-zinc-650 mb-2 leading-relaxed">
-                <span className="text-[#FF4D00] font-normal underline">
-                  {(() => {
-                    const val = randomUrgedTask.tags.createdWhen;
-                    const cat = categories.find(c => c.id === 'createdWhen');
-                    const opt = cat?.options.find(o => o.value === val);
-                    return opt?.label || '미정';
-                  })()}
-                </span>
-                전부터 하려고{" "}
-                <span className="text-blue-600 font-normal">
-                  {formatKoreanDate(randomUrgedTask.createdAt)}
-                </span>
-                {getDaysElapsed(randomUrgedTask.createdAt) === 0 ? (
-                  <>
-                    에 입력.{" "}
-                    <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase">
-                      오늘.
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    에 입력, 그 후{" "}
-                    <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase">
-                      {getDurationElapsedText(randomUrgedTask.createdAt)}
-                    </span>
-                    이 더 지남.
-                  </>
-                )}
-              </p>
-
-              {(() => {
-                const completedSubs = randomUrgedTask.subtasks?.filter(st => st.completed && st.completedAt) || [];
-                if (completedSubs.length === 0) return null;
-                
-                const latestCompletedAt = completedSubs.reduce((latest, current) => {
-                  if (!latest) return current.completedAt!;
-                  const latestTime = new Date(latest).getTime();
-                  const currentTime = new Date(current.completedAt!).getTime();
-                  return currentTime > latestTime ? current.completedAt! : latest;
-                }, completedSubs[0].completedAt!);
-                
-                const friendlyWhen = getFriendlyDaysAgo(latestCompletedAt);
-                return (
-                  <p className="text-sm font-normal text-emerald-600 mb-2 leading-relaxed flex items-center gap-1.5 animate-pulse">
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-400 px-2.5 py-1 text-xs font-normal uppercase">
-                      <span className="underline">{friendlyWhen} 함</span>🔥
-                    </span>
-                  </p>
-                );
-              })()}
-
-              <h3 className="text-xl md:text-2xl font-bold text-black mb-3 leading-tight tracking-tight uppercase">
-                &ldquo;{randomUrgedTask.title}&rdquo;
-              </h3>
-
-              {randomUrgedTask.description && (
-                <p className="text-[#1A1A1A]/80 text-sm md:text-base mb-4 leading-relaxed pl-3 border-l-4 border-[#FF4D00] font-normal">
-                  &ldquo;{randomUrgedTask.description}&rdquo;
-                </p>
-              )}
-
-              {/* Associated Tags for Recommended Task */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {categories.map((category) => {
-                  const value = randomUrgedTask.tags[category.id];
-                  if (!value) return null;
-                  const option = category.options.find(opt => opt.value === value);
-                  if (!option) return null;
-                  return (
-                    <span key={category.id} className="text-sm font-normal text-[#1A1A1A] bg-[#F4F4F1] px-2.5 py-1.5 flex items-center gap-1">
-                      {option.icon && <span className="mr-0.5">{option.icon}</span>}
-                      {option.label}
-                    </span>
-                  );
-                })}
-              </div>
-
-              {/* 할 일을 잘게 부순 단계 */}
-              <div
-                className="w-full text-left bg-white border-3 border-dashed border-zinc-400 p-5 text-sm text-black mt-3.5 group-hover:bg-[#FFFDF0] transition-colors"
-              >
-                {renderSubTaskSummary(randomUrgedTask)}
-              </div>
-
-            </motion.button>
-          ) : (
-            <div className="bg-white border-4 border-dashed border-black p-8 text-center text-black shadow-[4px_4px_0px_0px_#000]">
-              <Sparkles className="w-8 h-8 text-[#FF4D00] mx-auto mb-2.5 animate-bounce stroke-[2.5]" />
-              <p className="text-base font-bold uppercase">대기 중인 과제가 일절 존재하지 않습니다!</p>
-              <p className="text-[#1A1A1A]/70 text-sm mt-1 font-normal">슬쩍 미뤄뒀던 일이 혹시 있진 않으셨나요? 아래 등록기를 켜보세요.</p>
-            </div>
-          )
-        )}
-      </AnimatePresence>
-
       {/* 3. MAIN PENDING TASK LIST */}
       <div className="space-y-4">
 

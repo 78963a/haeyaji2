@@ -15,35 +15,40 @@ interface AnalyticsViewProps {
 
 export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
+  const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
 
   // Set up current date metrics
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth(); // 0-indexed
 
+  // State for currently viewed year and month
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
   const monthNames = [
     '1월', '2월', '3월', '4월', '5월', '6월',
     '7월', '8월', '9월', '10월', '11월', '12월'
   ];
 
-  // Days in current month
+  // Days in current selected month
   const totalDaysInMonth = useMemo(() => {
-    return new Date(currentYear, currentMonth + 1, 0).getDate();
-  }, [currentYear, currentMonth]);
+    return new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  }, [selectedYear, selectedMonth]);
 
   // First day of week index for calendar layout (0 = Sun, 1 = Mon ... 6 = Sat)
   const firstDayOfWeekIndex = useMemo(() => {
-    return new Date(currentYear, currentMonth, 1).getDay();
-  }, [currentYear, currentMonth]);
+    return new Date(selectedYear, selectedMonth, 1).getDay();
+  }, [selectedYear, selectedMonth]);
 
-  // Extract events for current month (YYYY-MM)
-  const monthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  // Extract events for selected month (YYYY-MM)
+  const monthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
   const currentMonthEvents = useMemo(() => {
     return activityEvents.filter(e => e.timestamp.startsWith(monthPrefix));
   }, [activityEvents, monthPrefix]);
 
-  // Sub-counters specifically for the current month
+  // Sub-counters specifically for the selected month
   const addedTasksCount = useMemo(() => {
     return currentMonthEvents.filter(e => e.type === 'add_task').length;
   }, [currentMonthEvents]);
@@ -68,9 +73,9 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
   const daysArray = useMemo(() => {
     const list = [];
     for (let d = 1; d <= totalDaysInMonth; d++) {
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       
-      // Calculate diligence score
+      // Calculate willpower/diligence score
       const dayEvents = activityEvents.filter(e => e.timestamp.startsWith(dateStr));
       let score = 0;
       dayEvents.forEach(e => {
@@ -107,12 +112,79 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
       });
     }
     return list;
-  }, [totalDaysInMonth, currentYear, currentMonth, activityEvents]);
+  }, [totalDaysInMonth, selectedYear, selectedMonth, activityEvents]);
 
   // Total monthly score accumulation
   const totalMonthlyScore = useMemo(() => {
     return daysArray.reduce((acc, curr) => acc + curr.score, 0);
   }, [daysArray]);
+
+  // Find min year and month from activity events and tasks
+  const [minYear, minMonth] = useMemo(() => {
+    let resultYear = currentYear;
+    let resultMonth = currentMonth;
+
+    const dates: Date[] = [];
+    if (activityEvents && activityEvents.length > 0) {
+      activityEvents.forEach(e => {
+        if (e.timestamp) {
+          const d = new Date(e.timestamp);
+          if (!isNaN(d.getTime())) {
+            dates.push(d);
+          }
+        }
+      });
+    }
+    if (tasks && tasks.length > 0) {
+      tasks.forEach(t => {
+        if (t.createdAt) {
+          const d = new Date(t.createdAt);
+          if (!isNaN(d.getTime())) {
+            dates.push(d);
+          }
+        }
+      });
+    }
+
+    if (dates.length > 0) {
+      const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      resultYear = minDate.getFullYear();
+      resultMonth = minDate.getMonth();
+    }
+
+    // Double check starting bounds (cannot be futuristic)
+    if (resultYear > currentYear || (resultYear === currentYear && resultMonth > currentMonth)) {
+      resultYear = currentYear;
+      resultMonth = currentMonth;
+    }
+
+    return [resultYear, resultMonth];
+  }, [activityEvents, tasks, currentYear, currentMonth]);
+
+  const isPrevDisabled = selectedYear < minYear || (selectedYear === minYear && selectedMonth <= minMonth);
+  const isNextDisabled = selectedYear > currentYear || (selectedYear === currentYear && selectedMonth >= currentMonth);
+
+  const handlePrevMonth = () => {
+    if (isPrevDisabled) return;
+    setSelectedDateStr(null);
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(p => p - 1);
+    } else {
+      setSelectedMonth(p => p - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (isNextDisabled) return;
+    setSelectedDateStr(null);
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(p => p + 1);
+    } else {
+      setSelectedMonth(p => p + 1);
+    }
+  };
 
   // Safe background color resolver based on score
   const getIntensityClass = (score: number) => {
@@ -142,17 +214,46 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
   return (
     <div className="space-y-6 pb-24 animate-fade-in" id="analytics-view-container">
       
+      {/* 0. Month Navigation Control */}
+      <div className="flex items-center justify-between bg-white border-4 border-black p-4 shadow-[6px_6px_0px_0px_#000]">
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          disabled={isPrevDisabled}
+          className={`px-4 py-2 border-2 border-black font-black text-sm transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000] cursor-pointer inline-flex items-center gap-1 bg-[#F4F4F1] ${
+            isPrevDisabled ? 'opacity-30 cursor-not-allowed bg-[#F4F4F1]/60 shadow-none hover:translate-none' : 'hover:bg-zinc-200'
+          }`}
+        >
+          ◀ 이전 달
+        </button>
+        <div className="text-center">
+          <span className="text-base sm:text-lg font-black text-black">
+            {selectedYear}년 {monthNames[selectedMonth]}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          disabled={isNextDisabled}
+          className={`px-4 py-2 border-2 border-black font-black text-sm transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000] cursor-pointer inline-flex items-center gap-1 bg-[#F4F4F1] ${
+            isNextDisabled ? 'opacity-30 cursor-not-allowed bg-[#F4F4F1]/60 shadow-none hover:translate-none' : 'hover:bg-zinc-200'
+          }`}
+        >
+          다음 달 ▶
+        </button>
+      </div>
+
       {/* 1. Monthly Summary Spotlight */}
       <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] space-y-4">
         <div className="flex items-center justify-between border-b-3 border-black pb-3">
           <div className="flex items-center gap-2">
             <Activity className="w-5.5 h-5.5 text-[#FF4D00] stroke-[3]" />
             <h3 className="text-base font-black tracking-tight text-black uppercase">
-              {currentYear}년 {monthNames[currentMonth]} 성실 통계
+              {selectedYear}년 {monthNames[selectedMonth]} 의지력 통계
             </h3>
           </div>
           <span className="text-xs font-bold font-mono bg-yellow-300 px-2 py-0.5 border-2 border-black inline-block shadow-[1.5px_1.5px_0px_0px_#000]">
-            DILIGENCE SCORE {totalMonthlyScore}
+            WILLPOWER SCORE {totalMonthlyScore}
           </span>
         </div>
 
@@ -212,10 +313,19 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-black text-black uppercase flex items-center gap-1.5 leading-none">
             <Calendar className="w-4 h-4 text-zinc-700 stroke-[2.5]" />
-            깃하브 잔디밭 히트맵 ({monthNames[currentMonth]} 기여 달력)
+            의지력 잔디밭 히트맵 ({monthNames[selectedMonth]} 의지력 달력)
+            <button
+              type="button"
+              onClick={() => setIsFormulaModalOpen(true)}
+              className="text-zinc-500 hover:text-black focus:outline-none cursor-pointer p-0.5 transition-colors inline-flex items-center"
+              title="의지력 산출 공식 보기"
+              id="show-willpower-formula-button"
+            >
+              <HelpCircle className="w-4.5 h-4.5 stroke-[2.5]" />
+            </button>
           </h4>
           <span className="text-[11px] text-zinc-500 font-mono uppercase bg-[#F4F4F1] border border-black px-1.5 py-0.5">
-            JUNE 2026
+            {new Date(selectedYear, selectedMonth).toLocaleString('en-US', { month: 'short' }).toUpperCase()} {selectedYear}
           </span>
         </div>
 
@@ -282,15 +392,6 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
 
         </div>
 
-        {/* Dynamic Formula Explanation Panel */}
-        <div className="bg-[#F4F4F1] border border-black p-3 flex gap-2 items-start text-xs font-normal text-zinc-700 leading-normal">
-          <HelpCircle className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
-          <div>
-            <p className="font-bold text-black mb-0.5">기여도 산출 공식:</p>
-            새 과업 생성 (+3점), 과업 완수 (+5점), 세부 행동 추가 (+1점), 세부 행동 해결 (+2점), 수정 (+1점), 보류 및 포기 (+2점). 성실히 의지를 표현할수록 초록색 잔디가 짙게 피어납니다.
-          </div>
-        </div>
-
       </div>
 
       {/* 3. DETAILED EVENT DIARY slab for selected heat point */}
@@ -338,6 +439,84 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
               <p className="text-[11px] mt-1 font-normal text-zinc-450">달력의 다른 유색 타일을 클릭해 보세요!</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Formula Modal Overlay */}
+      {isFormulaModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="formula-modal-overlay">
+          <div className="bg-white border-4 border-black p-6 max-w-sm sm:max-w-md w-full shadow-[8px_8px_0px_0px_#000] relative">
+            
+            {/* Close Button at top right */}
+            <button
+              type="button"
+              onClick={() => setIsFormulaModalOpen(false)}
+              className="absolute top-4 right-4 text-black hover:text-[#FF4D00] font-black text-lg p-1 select-none cursor-pointer focus:outline-none transition-colors"
+              aria-label="닫기"
+              id="formula-modal-close-x"
+            >
+              ✖
+            </button>
+
+            {/* Modal Title */}
+            <div className="flex items-center gap-2 border-b-3 border-black pb-3 mb-4">
+              <HelpCircle className="w-5.5 h-5.5 text-emerald-600 stroke-[3]" />
+              <h3 className="text-base sm:text-lg font-black text-black uppercase">
+                의지력 산출 공식 💡
+              </h3>
+            </div>
+
+            {/* Modal Content */}
+            <div className="space-y-4 text-xs sm:text-sm font-normal text-zinc-850 leading-relaxed">
+              <p className="font-bold text-black bg-yellow-300 border-2 border-black px-2.5 py-1.5 shadow-[2px_2px_0px_0px_#000] inline-block">
+                "성실하게 의지를 분출하세요!"
+              </p>
+              
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">새 과업 생성</span>
+                  <span className="font-mono font-black text-[#FF4D00] text-right text-sm">+3점</span>
+                </div>
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">과업 완수</span>
+                  <span className="font-mono font-black text-blue-600 text-right text-sm">+5점</span>
+                </div>
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">세부 행동 추가</span>
+                  <span className="font-mono font-black text-amber-600 text-right text-sm">+1점</span>
+                </div>
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">세부 행동 해결</span>
+                  <span className="font-mono font-black text-emerald-600 text-right text-sm">+2점</span>
+                </div>
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">정보 수정</span>
+                  <span className="font-mono font-black text-zinc-650 text-right text-sm">+1점</span>
+                </div>
+                <div className="grid grid-cols-2 bg-[#F9F9F6] border-2 border-black p-2 text-xs">
+                  <span className="font-bold text-black border-r-2 border-black pr-2">보류 및 포기</span>
+                  <span className="font-mono font-black text-rose-500 text-right text-sm">+2점</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-400 p-3 text-[11px] text-zinc-700 leading-normal">
+                🌱 의지를 적극적으로 표현하고 완료할수록 히트맵 달력의 초록색 잔디가 더욱 짙고 풍성하게 피어납니다.
+              </div>
+            </div>
+
+            {/* Confirm Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsFormulaModalOpen(false)}
+                className="px-5 py-2 border-2 border-black font-black text-xs bg-[#F4F4F1] text-black hover:bg-zinc-200 transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000] cursor-pointer"
+                id="formula-modal-close-btn"
+              >
+                닫기
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 
