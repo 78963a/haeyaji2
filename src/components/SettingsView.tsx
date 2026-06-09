@@ -254,18 +254,18 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
           <span className="text-sm font-normal text-[#FF4D00] flex items-center gap-1 mb-2.5">
             <FolderPlus className="w-4 h-4 stroke-[2]" /> 새 카테고리 추가
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="예: 우선순위, 공부장소, 협력 파트너 등"
               value={newCategoryLabel}
               onChange={(e) => setNewCategoryLabel(e.target.value)}
-              className="flex-1 bg-white border-2 border-black py-2 px-3 text-sm text-black font-normal outline-none"
+              className="w-full sm:flex-1 bg-white border-2 border-black py-2 px-3 text-sm text-black font-normal outline-none focus:border-[#FF4D00]"
             />
             <button
               type="submit"
               disabled={!newCategoryLabel.trim()}
-              className="bg-black hover:bg-zinc-800 text-white font-normal px-4 py-2 border-2 border-black text-sm shadow-[2px_2px_0px_0px_#FF4D00] transition active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="w-full sm:w-auto bg-black hover:bg-zinc-800 text-white font-normal px-4 py-2 border-2 border-black text-sm shadow-[2px_2px_0px_0px_#FF4D00] transition active:scale-95 disabled:opacity-40 cursor-pointer whitespace-nowrap text-center shrink-0"
             >
               카테고리 생성 ➕
             </button>
@@ -330,13 +330,13 @@ export function SettingsView({ settings, tasks, onSaveSettings, onImportData }: 
                     placeholder="분류 명칭 (예: 집안, 긴급함, 노트북)"
                     value={optionLabelInputs[cat.id] || ''}
                     onChange={(e) => setOptionLabelInputs(prev => ({ ...prev, [cat.id]: e.target.value }))}
-                    className="flex-1 bg-white border-2 border-black py-1 px-2 text-sm font-normal outline-none"
+                    className="w-full sm:flex-1 bg-white border-2 border-black py-1 px-2 text-sm font-normal outline-none focus:border-zinc-700"
                   />
                   <button
                     type="button"
                     onClick={() => handleCreateOption(cat.id)}
                     disabled={!(optionLabelInputs[cat.id] || '').trim()}
-                    className="bg-[#fed7aa] hover:bg-orange-200 border-2 border-black px-3.5 py-1 text-sm font-normal cursor-pointer shadow-[1.5px_1.5px_0px_0px_#000] active:scale-95 disabled:opacity-40 transition shrink-0"
+                    className="w-full sm:w-auto bg-[#fed7aa] hover:bg-orange-200 border-2 border-black px-3.5 py-1 text-sm font-normal cursor-pointer shadow-[1.5px_1.5px_0px_0px_#000] active:scale-95 disabled:opacity-40 transition shrink-0 whitespace-nowrap text-center"
                   >
                     분류 추가 ➕
                   </button>

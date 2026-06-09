@@ -155,7 +155,7 @@ export default function App() {
   // States of filter and search for the Filtering Compass
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterTags, setFilterTags] = useState<Record<string, string>>({});
+  const [filterTags, setFilterTags] = useState<Record<string, string[]>>({});
   const [sortBy, setSortBy] = useState<string>('severity');
 
   // Ref and state to dynamically track public header height for perfect layout spacing
@@ -235,7 +235,15 @@ export default function App() {
 
   // List of active tags categories for the Filtering Compass display
   const categories = settings.customTags || DEFAULT_TAG_CATEGORIES;
-  const activeFiltersCount = Object.keys(filterTags).length + (searchTerm ? 1 : 0) + (sortBy !== 'severity' ? 1 : 0);
+  
+  // Calculate active filters count (filters are active when any option is deselected)
+  let activeFiltersCount = (searchTerm ? 1 : 0) + (sortBy !== 'severity' ? 1 : 0);
+  categories.forEach(cat => {
+    const selected = filterTags[cat.id];
+    if (selected !== undefined && selected.length < cat.options.length) {
+      activeFiltersCount += 1;
+    }
+  });
 
   return (
     <div className="bg-[#F4F4F1] min-h-screen text-[#1A1A1A] font-sans antialiased selection:bg-[#FF4D00] selection:text-white pb-28">
@@ -306,42 +314,93 @@ export default function App() {
           </div>
         </div>
 
-        {/* 1.5. COLLAPSIBLE FILTERING COMPASS (ONLY ON HOME) */}
+        {/* 1.5. COMPACT SEARCH & FILTER CONTROLS (ONLY ON HOME) */}
         {activeView === 'home' && (
-          <div className="max-w-xl mx-auto mt-2.5 pt-2.5 border-t-2 border-dashed border-black/20">
+          <div className="max-w-xl mx-auto mt-2.5 pt-2.5 border-t-2 border-dashed border-black/20 flex items-center justify-between gap-3 text-xs" id="compact-filter-row">
+            {/* Left side: Grouped Search + Filter icons, and Active Count Badge */}
             <button
-              id="filter-compass-toggle"
-              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-              className="w-full flex items-center justify-between bg-[#FFFDE0] hover:bg-[#FFF9C4] text-black border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition-all text-xs font-normal cursor-pointer"
+              type="button"
+              onClick={() => setIsFilterExpanded(true)}
+              className="flex items-center gap-2 bg-white hover:bg-zinc-50 text-black border-2 border-black px-2.5 py-1.5 shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition-all text-xs font-bold cursor-pointer shrink-0"
+              id="filter-compass-modal-toggle"
+              title="검색 및 상세 필터 설정 열기"
             >
-              <span className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-[#FF4D00] stroke-[2]" />
-                <span className="font-bold text-black text-xs">🧭 미룬 일 정교 추적 필터링 컴파스</span>
-                {activeFiltersCount > 0 && (
-                  <span className="bg-[#FF4D00] text-white px-2 py-0.5 ml-1 text-[10px] font-bold border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-                    {activeFiltersCount}개 적용됨
-                  </span>
-                )}
+              <span className="flex items-center gap-1 text-[#FF4D00]">
+                <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+                <Filter className="w-3.5 h-3.5 stroke-[2.5]" />
               </span>
-              <span className="text-[10px] bg-white border-2 border-black px-2 py-0.5 font-bold transition hover:bg-zinc-100">
-                {isFilterExpanded ? '접기 ▲' : '펼치기 ▼'}
-              </span>
+              {activeFiltersCount > 0 ? (
+                <span className="bg-[#FF4D00] text-white px-1.5 py-0.5 text-[10px] font-black border border-black shadow-[1px_1px_0px_#000]">
+                  적용됨 {activeFiltersCount}
+                </span>
+              ) : (
+                <span className="text-zinc-500 text-[10px] font-bold">필터 적용하기</span>
+              )}
             </button>
-            
-            {/* Collapsible Panel with smooth height transitions */}
-            <AnimatePresence>
-              {isFilterExpanded && (
+
+            {/* Right side: Sorting Selector */}
+            <div className="flex items-center shrink-0">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-[#FFF9E6] border-2 border-black py-1 px-2 text-[11px] text-black font-bold outline-none cursor-pointer shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition"
+                id="sorting-select-dropdown"
+              >
+                <option value="severity">🚨 우선 순위 (지연도)</option>
+                <option value="oldest">📅 미룬지 오래된 순</option>
+                <option value="newest">🆕 최근 생긴 순</option>
+                <option value="recently_touched">🔥 최근 실천 순</option>
+                <option value="longest_untouched">❄️ 가장 방치된 순</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* SEARCH & FILTERS MODAL POPUP */}
+        {activeView === 'home' && (
+          <AnimatePresence>
+            {isFilterExpanded && (
+              <div 
+                className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-[150] overflow-y-auto"
+                id="filter-modal-overlay"
+                onClick={() => setIsFilterExpanded(false)}
+              >
                 <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 10 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="overflow-hidden bg-gradient-to-br from-[#FFFDF0] via-[#FFF3E0] to-[#FFE0B2] border-3 border-black p-4 shadow-[4px_4px_0px_0px_#000] space-y-3 mt-2"
+                  className="bg-white border-4 border-black p-5 md:p-6 max-w-md w-full shadow-[6px_6px_0px_0px_#000] relative space-y-4 my-8 pointer-events-auto"
+                  id="filter-modal-content"
+                  onClick={(e) => e.stopPropagation()}
                 >
+                  {/* Close pin button at top right */}
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterExpanded(false)}
+                    className="absolute top-4 right-4 p-1.5 border-2 border-black bg-white hover:bg-zinc-100 shadow-[2px_2px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+                    aria-label="필터 설정 닫기"
+                  >
+                    <span className="font-extrabold text-sm block px-1">✖</span>
+                  </button>
+
+                  {/* Header Title */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-[#FF4D00] border-2 border-[#FF4D00] px-2 py-0.5 inline-block bg-[#FFF3E0]">
+                      SEARCH & DETAIL FILTERS
+                    </span>
+                    <h3 className="text-lg font-black text-black">
+                      미룬 일 검색 및 필터 설정
+                    </h3>
+                  </div>
+
                   {/* Reset filters button when filters exist */}
-                  {(Object.keys(filterTags).length > 0 || searchTerm || sortBy !== 'severity') && (
+                  {(searchTerm || sortBy !== 'severity' || categories.some(cat => {
+                    const selected = filterTags[cat.id];
+                    return selected !== undefined && selected.length < cat.options.length;
+                  })) && (
                     <div className="flex justify-between items-center pb-2 border-b-2 border-black/10">
-                      <span className="text-[10px] text-zinc-550 font-normal">필터 조건 활성화 상태</span>
+                      <span className="text-[10px] text-zinc-500 font-normal">필터 조건 활성화 상태</span>
                       <button
                         onClick={() => {
                           setFilterTags({});
@@ -349,79 +408,301 @@ export default function App() {
                           setSortBy('severity');
                           setUrgeIndex(0);
                         }}
-                        className="text-[10px] text-zinc-700 hover:text-black font-normal bg-white hover:bg-zinc-100 border-2 border-black px-2 py-0.5 inline-flex items-center gap-1 cursor-pointer transition shadow-[1px_1px_0px_0px_#000] active:translate-y-0.5"
+                        className="text-[10px] text-zinc-700 hover:text-black font-semibold bg-white hover:bg-zinc-100 border-2 border-black px-2 py-0.5 inline-flex items-center gap-1 cursor-pointer transition shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5"
                       >
-                        🧹 모든 필터 및 정렬 방식 초기화
+                        🧹 모든 필터와 정렬 방식 초기화
                       </button>
                     </div>
                   )}
 
                   {/* Dynamic Search Box */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1A1A1A] stroke-[2]" />
-                    <input
-                      type="text"
-                      placeholder="미뤄둔 어떤 일을 구출해드릴까요? (검색어 입력)"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-white text-[#1A1A1A] border-2 border-black py-2 pl-9 pr-3 text-xs font-normal outline-none focus:ring-none placeholder-[#1A1A1A]/50 focus:bg-white text-black"
-                    />
-                  </div>
-
-                  {/* Filters Selector Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] md:text-xs">
-                    {categories.map((cat) => (
-                      <div key={cat.id} className="space-y-1">
-                        <span className="text-[10px] font-normal text-black block">⚙️ {cat.label}</span>
-                        <select
-                          value={filterTags[cat.id] || 'all'}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFilterTags((prev) => {
-                              const next = { ...prev };
-                              if (val === 'all') {
-                                delete next[cat.id];
-                              } else {
-                                next[cat.id] = val;
-                              }
-                              return next;
-                            });
-                          }}
-                          className="w-full bg-white border-2 border-black p-1.5 text-xs text-black font-normal outline-none cursor-pointer"
-                        >
-                          <option value="all">전체 ({cat.label.replace(/\s*\(.*?\)\s*/, '')})</option>
-                          {cat.options.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.icon ? `${opt.icon} ` : ''}{opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-
-                    {/* Sorting Selector */}
-                    <div className="space-y-1 col-span-2 pt-1 border-t border-black/10">
-                      <span className="text-[10px] font-normal text-[#FF4D00] block mb-0.5">🧭 미룬 일 정렬 방식 선택</span>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="w-full bg-[#FFF9E6] border-2 border-black p-1.5 text-xs text-black font-normal outline-none cursor-pointer"
-                      >
-                        <option value="severity">🚨 지연 심각도 높은 순 (기본)</option>
-                        <option value="oldest">📅 발생시점 오래된 순으로 정렬</option>
-                        <option value="newest">🆕 발생시점 최근 순으로 정렬</option>
-                        <option value="recently_touched">🔥 최근에 실천한 순으로 정렬</option>
-                        <option value="longest_untouched">❄️ 오랫동안 손대지 않았던 순으로 정렬</option>
-                      </select>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-black block">🔍 미룬 일 설명이나 제목 검색</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black stroke-[2.5]" />
+                      <input
+                        type="text"
+                        placeholder="검색할 할일 제목 단어를 입력하세요..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-white text-black border-2 border-black py-2 pl-9 pr-3 text-xs font-normal outline-none focus:border-[#FF4D00] placeholder-zinc-450"
+                      />
                     </div>
                   </div>
 
+                  {/* Filters Selector Grid */}
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    {categories.map((cat) => {
+                      const selected = filterTags[cat.id] !== undefined
+                        ? filterTags[cat.id]
+                        : cat.options.map(o => o.value);
+                      
+                      return (
+                        <div key={cat.id} className="space-y-1.5 pb-2 border-b border-black/10 last:border-b-0 text-left">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black text-black flex items-center gap-1">
+                              ⚙️ {cat.label}
+                            </span>
+                            <div className="flex gap-1 text-[9px] font-bold">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFilterTags(prev => ({
+                                    ...prev,
+                                    [cat.id]: cat.options.map(o => o.value)
+                                  }));
+                                }}
+                                className="px-1.5 py-0.5 bg-zinc-50 border border-black text-black hover:bg-zinc-100 active:scale-95 transition cursor-pointer"
+                              >
+                                전체 선택 👍
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFilterTags(prev => ({
+                                    ...prev,
+                                    [cat.id]: []
+                                  }));
+                                }}
+                                className="px-1.5 py-0.5 bg-zinc-50 border border-black text-black hover:bg-zinc-100 active:scale-95 transition cursor-pointer"
+                              >
+                                전체 해제 👎
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-1.5">
+                            {cat.options.map((opt) => {
+                              const isPressed = selected.includes(opt.value);
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setFilterTags((prev) => {
+                                      const currentSelected = prev[cat.id] !== undefined
+                                        ? prev[cat.id]
+                                        : cat.options.map(o => o.value);
+                                      
+                                      let nextSelected: string[];
+                                      if (currentSelected.includes(opt.value)) {
+                                        nextSelected = currentSelected.filter(v => v !== opt.value);
+                                      } else {
+                                        nextSelected = [...currentSelected, opt.value];
+                                      }
+                                      return {
+                                        ...prev,
+                                        [cat.id]: nextSelected
+                                      };
+                                    });
+                                  }}
+                                  className={`px-2 py-1 text-xs border-2 transition-all duration-150 active:scale-95 cursor-pointer font-medium flex items-center gap-1 ${
+                                    isPressed
+                                      ? 'bg-black text-white border-black font-semibold shadow-[1.5px_1.5px_0px_#000]'
+                                      : 'bg-white text-zinc-400 border-zinc-200 line-through decoration-zinc-300'
+                                  }`}
+                                >
+                                  {opt.icon && <span className={isPressed ? "" : "opacity-45"}>{opt.icon}</span>}
+                                  <span>{opt.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Apply & close buttons */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsFilterExpanded(false)}
+                      className="w-full py-3 bg-[#FF4D00] hover:bg-[#E04400] text-white border-2 border-black text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] active:scale-95 transition duration-150 cursor-pointer text-center"
+                    >
+                      필터 설정 적용 및 닫기 👍
+                    </button>
+                  </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              </div>
+            )}
+          </AnimatePresence>
         )}
       </header>
+
+      {/* SEARCH & FILTERS MODAL POPUP */}
+      {activeView === 'home' && (
+        <AnimatePresence>
+          {isFilterExpanded && (
+            <div 
+              className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-[150] overflow-y-auto"
+              id="filter-modal-overlay"
+              onClick={() => setIsFilterExpanded(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="bg-white border-4 border-black p-5 md:p-6 max-w-md w-full shadow-[6px_6px_0px_0px_#000] relative space-y-4 my-8 pointer-events-auto"
+                id="filter-modal-content"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close pin button at top right */}
+                <button
+                  type="button"
+                  onClick={() => setIsFilterExpanded(false)}
+                  className="absolute top-4 right-4 p-1.5 border-2 border-black bg-white hover:bg-zinc-100 shadow-[2px_2px_0px_0px_#000] active:scale-95 transition cursor-pointer"
+                  aria-label="필터 설정 닫기"
+                >
+                  <span className="font-extrabold text-sm block px-1">✖</span>
+                </button>
+
+                {/* Header Title */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-[#FF4D00] border-2 border-[#FF4D00] px-2 py-0.5 inline-block bg-[#FFF3E0]">
+                    SEARCH & DETAIL FILTERS
+                  </span>
+                  <h3 className="text-lg font-black text-black">
+                    미룬 일 검색 및 필터 설정
+                  </h3>
+                </div>
+
+                {/* Reset filters button when filters exist */}
+                {(searchTerm || sortBy !== 'severity' || categories.some(cat => {
+                  const selected = filterTags[cat.id];
+                  return selected !== undefined && selected.length < cat.options.length;
+                })) && (
+                  <div className="flex justify-between items-center pb-2 border-b-2 border-black/10">
+                    <span className="text-[10px] text-zinc-500 font-normal">필터 조건 활성화 상태</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterTags({});
+                        setSearchTerm('');
+                        setSortBy('severity');
+                        setUrgeIndex(0);
+                      }}
+                      className="text-[10px] text-zinc-700 hover:text-black font-semibold bg-white hover:bg-zinc-100 border-2 border-black px-2 py-0.5 inline-flex items-center gap-1 cursor-pointer transition shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5"
+                    >
+                      🧹 모든 필터와 정렬 방식 초기화
+                    </button>
+                  </div>
+                )}
+
+                {/* Dynamic Search Box */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-black block">🔍 미룬 일 설명이나 제목 검색</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black stroke-[2.5]" />
+                    <input
+                      type="text"
+                      placeholder="검색할 할일 제목 단어를 입력하세요..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full bg-white text-black border-2 border-black py-2 pl-9 pr-3 text-xs font-normal outline-none focus:border-[#FF4D00] placeholder-zinc-450"
+                    />
+                  </div>
+                </div>
+
+                {/* Filters Selector Grid */}
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {categories.map((cat) => {
+                    const selected = filterTags[cat.id] !== undefined
+                      ? filterTags[cat.id]
+                      : cat.options.map(o => o.value);
+                    
+                    return (
+                      <div key={cat.id} className="space-y-1.5 pb-2 border-b border-black/10 last:border-b-0 text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-black flex items-center gap-1">
+                            ⚙️ {cat.label}
+                          </span>
+                          <div className="flex gap-1 text-[9px] font-bold">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFilterTags(prev => ({
+                                  ...prev,
+                                  [cat.id]: cat.options.map(o => o.value)
+                                }));
+                              }}
+                              className="px-1.5 py-0.5 bg-zinc-50 border border-black text-black hover:bg-zinc-100 active:scale-95 transition cursor-pointer"
+                            >
+                              전체 선택 👍
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFilterTags(prev => ({
+                                  ...prev,
+                                  [cat.id]: []
+                                }));
+                              }}
+                              className="px-1.5 py-0.5 bg-zinc-50 border border-black text-black hover:bg-zinc-100 active:scale-95 transition cursor-pointer"
+                            >
+                              전체 해제 👎
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1.5">
+                          {cat.options.map((opt) => {
+                            const isPressed = selected.includes(opt.value);
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                  setFilterTags((prev) => {
+                                    const currentSelected = prev[cat.id] !== undefined
+                                      ? prev[cat.id]
+                                      : cat.options.map(o => o.value);
+                                    
+                                    let nextSelected: string[];
+                                    if (currentSelected.includes(opt.value)) {
+                                      nextSelected = currentSelected.filter(v => v !== opt.value);
+                                    } else {
+                                      nextSelected = [...currentSelected, opt.value];
+                                    }
+                                    return {
+                                      ...prev,
+                                      [cat.id]: nextSelected
+                                    };
+                                  });
+                                }}
+                                className={`px-2 py-1 text-xs border-2 transition-all duration-150 active:scale-95 cursor-pointer font-medium flex items-center gap-1 ${
+                                  isPressed
+                                    ? 'bg-black text-white border-black font-semibold shadow-[1.5px_1.5px_0px_#000]'
+                                    : 'bg-white text-zinc-400 border-zinc-200 line-through decoration-zinc-300'
+                                }`}
+                              >
+                                {opt.icon && <span className={isPressed ? "" : "opacity-45"}>{opt.icon}</span>}
+                                <span>{opt.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Apply & close buttons */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterExpanded(false)}
+                    className="w-full py-3 bg-[#FF4D00] hover:bg-[#E04400] text-white border-2 border-black text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000] active:scale-95 transition duration-150 cursor-pointer text-center"
+                  >
+                    필터 설정 적용 및 닫기 👍
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      )}
 
       {/* 2. MAIN SCROLLABLE WRAPPER (with top padding to offset fixed header) */}
       <main className="max-w-xl mx-auto px-4 pb-8 transition-all duration-300" style={{ paddingTop: `${headerHeight + 16}px` }}>

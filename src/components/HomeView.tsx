@@ -20,8 +20,8 @@ interface HomeViewProps {
   onSetUrgeIndex?: React.Dispatch<React.SetStateAction<number>>;
   searchTerm: string;
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
-  filterTags: Record<string, string>;
-  setFilterTags: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  filterTags: Record<string, string[]>;
+  setFilterTags: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   sortBy: string;
   setSortBy: React.Dispatch<React.SetStateAction<string>>;
 }
@@ -60,7 +60,10 @@ export function HomeView({
     return Math.abs(hash) / 2147483647;
   };
 
-  const isDefaultState = !searchTerm && Object.keys(filterTags).length === 0 && sortBy === 'severity';
+  const isDefaultState = !searchTerm && sortBy === 'severity' && categories.every(cat => {
+    const selected = filterTags[cat.id];
+    return selected === undefined || selected.length === cat.options.length;
+  });
 
   // Custom renderer for subtasks summary matching user requested logic:
   // 1. Most recently completed subtask (if any)
@@ -208,9 +211,14 @@ export function HomeView({
         (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase()));
       
       // 2. Dynamic tag filter mapping
-      const matchesTags = Object.entries(filterTags).every(([catId, val]) => {
-        if (!val || val === 'all') return true;
-        return task.tags[catId] === val;
+      const matchesTags = categories.every(cat => {
+        const allowedVals = filterTags[cat.id] !== undefined
+          ? filterTags[cat.id]
+          : cat.options.map(o => o.value);
+        
+        const taskVal = task.tags[cat.id];
+        if (!taskVal) return true;
+        return allowedVals.includes(taskVal);
       });
 
       return matchesSearch && matchesTags;
