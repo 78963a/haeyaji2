@@ -373,54 +373,60 @@ export function ActiveFocusView({
         <div className="space-y-3 pt-1">
           {task.subtasks.length > 0 ? (
             <div className="space-y-2.5">
-              {(() => {
-                // 1. Uncompleted subtasks (newest created first)
-                const activeSubs = [...task.subtasks].filter(st => !st.completed).reverse();
+              <AnimatePresence mode="popLayout">
+                {(() => {
+                  // 1. Uncompleted subtasks (newest created first)
+                  const activeSubs = [...task.subtasks].filter(st => !st.completed).reverse();
 
-                // 2. Completed subtasks (newest completed first, i.e., older completed at the bottom of completed section)
-                const completedSubs = [...task.subtasks]
-                  .filter(st => st.completed)
-                  .sort((a, b) => {
-                    const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-                    const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-                    if (timeA !== timeB) {
-                      return timeB - timeA; // Newer completed first, older at the bottom
+                  // 2. Completed subtasks (newest completed first, i.e., older completed at the bottom of completed section)
+                  const completedSubs = [...task.subtasks]
+                    .filter(st => st.completed)
+                    .sort((a, b) => {
+                      const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+                      const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+                      if (timeA !== timeB) {
+                        return timeB - timeA; // Newer completed first, older at the bottom
+                      }
+                      const idxA = task.subtasks.findIndex(item => item.id === a.id);
+                      const idxB = task.subtasks.findIndex(item => item.id === b.id);
+                      return idxB - idxA;
+                    });
+
+                  const sortedSubtasks = [...activeSubs, ...completedSubs];
+
+                  return sortedSubtasks.map((st) => {
+                    const isCompleted = st.completed;
+
+                    // Detect subtask state machine state
+                    let subState: 'unstarted' | 'inprogress' | 'paused' | 'completed' = 'unstarted';
+                    if (st.completed) {
+                      subState = 'completed';
+                    } else if (st.startedAt) {
+                      if (st.isPaused) {
+                        subState = 'paused';
+                      } else {
+                        subState = 'inprogress';
+                      }
                     }
-                    const idxA = task.subtasks.findIndex(item => item.id === a.id);
-                    const idxB = task.subtasks.findIndex(item => item.id === b.id);
-                    return idxB - idxA;
-                  });
 
-                const sortedSubtasks = [...activeSubs, ...completedSubs];
-
-                return sortedSubtasks.map((st) => {
-                  const isCompleted = st.completed;
-
-                  // Detect subtask state machine state
-                  let subState: 'unstarted' | 'inprogress' | 'paused' | 'completed' = 'unstarted';
-                  if (st.completed) {
-                    subState = 'completed';
-                  } else if (st.startedAt) {
-                    if (st.isPaused) {
-                      subState = 'paused';
-                    } else {
-                      subState = 'inprogress';
-                    }
-                  }
-
-                  return (
-                    <div
-                      key={st.id}
-                      className={`border-3 border-dashed border-zinc-400 p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all ${
-                        isCompleted
-                          ? 'bg-zinc-50/70 opacity-85'
-                          : subState === 'inprogress'
-                          ? 'bg-orange-50/65'
-                          : subState === 'paused'
-                          ? 'bg-yellow-50/65'
-                          : 'bg-white'
-                      }`}
-                    >
+                    return (
+                      <motion.div
+                        key={st.id}
+                        layout
+                        initial={{ opacity: 0, y: -15, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                        className={`border-3 border-dashed border-zinc-400 p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors duration-200 ${
+                          isCompleted
+                            ? 'bg-zinc-50/70 opacity-85'
+                            : subState === 'inprogress'
+                            ? 'bg-orange-50/65'
+                            : subState === 'paused'
+                            ? 'bg-yellow-50/65'
+                            : 'bg-white'
+                        }`}
+                      >
                       {/* Visual details */}
                       <div className="flex-1 flex items-start gap-2.5">
                         <button
@@ -600,10 +606,11 @@ export function ActiveFocusView({
                           수정/삭제
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 });
               })()}
+              </AnimatePresence>
             </div>
           ) : (
             <div className="text-center py-8 text-zinc-500 font-normal text-sm bg-[#F4F4F1] border-2 border-dashed border-black">

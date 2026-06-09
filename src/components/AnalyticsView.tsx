@@ -36,9 +36,10 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
     return new Date(selectedYear, selectedMonth + 1, 0).getDate();
   }, [selectedYear, selectedMonth]);
 
-  // First day of week index for calendar layout (0 = Sun, 1 = Mon ... 6 = Sat)
+  // First day of week index for calendar layout starting on Monday (0 = Mon, 1 = Tue ... 6 = Sun)
   const firstDayOfWeekIndex = useMemo(() => {
-    return new Date(selectedYear, selectedMonth, 1).getDay();
+    const day = new Date(selectedYear, selectedMonth, 1).getDay(); // 0 is Sun, 1 is Mon...
+    return day === 0 ? 6 : day - 1;
   }, [selectedYear, selectedMonth]);
 
   // Extract events for selected month (YYYY-MM)
@@ -243,72 +244,7 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
         </button>
       </div>
 
-      {/* 1. Monthly Summary Spotlight */}
-      <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] space-y-4">
-        <div className="flex items-center justify-between border-b-3 border-black pb-3">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5.5 h-5.5 text-[#FF4D00] stroke-[3]" />
-            <h3 className="text-base font-black tracking-tight text-black uppercase">
-              {selectedYear}년 {monthNames[selectedMonth]} 의지력 통계
-            </h3>
-          </div>
-          <span className="text-xs font-bold font-mono bg-yellow-300 px-2 py-0.5 border-2 border-black inline-block shadow-[1.5px_1.5px_0px_0px_#000]">
-            WILLPOWER SCORE {totalMonthlyScore}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
-            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">새 미룬일</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-black font-mono">{addedTasksCount}</span>
-              <span className="text-xs text-zinc-500">개</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
-            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">새 세부과업</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-[#FF4D00] font-mono">{addedSubtasksCount}</span>
-              <span className="text-xs text-zinc-500">개</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between col-span-2 sm:col-span-1">
-            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">격파완료 세부과업</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-emerald-600 font-mono">{completedSubtasksCount}</span>
-              <span className="text-xs text-zinc-500">지점</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
-            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">완료한 미룬일</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-blue-600 font-mono">{completedTasksCount}</span>
-              <span className="text-xs text-zinc-500">완수</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
-            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">보류 및 포기</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-rose-500 font-mono">{abandonedOrPostponedCount}</span>
-              <span className="text-xs text-zinc-500">결심</span>
-            </div>
-          </div>
-
-          <div className="bg-amber-100 border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between col-span-2 sm:col-span-1">
-            <span className="text-[11px] text-amber-800 font-bold block leading-tight">총 활동 기록</span>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-2xl font-black text-amber-900 font-mono">{currentMonthEvents.length}</span>
-              <span className="text-xs text-amber-850">건</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. GITHUB-STYLE HEATMAP BOX */}
+       {/* 2. GITHUB-STYLE HEATMAP BOX */}
       <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-black text-black uppercase flex items-center gap-1.5 leading-none">
@@ -332,13 +268,13 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
         {/* Heatmap Layout with Week Columns */}
         <div className="p-4 bg-[#F9F9F6] border-2 border-black shadow-[2px_2px_0px_0px_#000] overflow-x-auto">
           
-          {/* Day Headers (Sun-Sat) */}
+          {/* Day Headers (Mon-Sun) */}
           <div className="grid grid-cols-7 text-center gap-1.5 mb-1.5">
-            {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+            {['월', '화', '수', '목', '금', '토', '일'].map((day, idx) => (
               <span 
                 key={day} 
                 className={`text-[10px] font-bold ${
-                  idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-zinc-500'
+                  idx === 6 ? 'text-red-500' : idx === 5 ? 'text-blue-500' : 'text-zinc-500'
                 }`}
               >
                 {day}
@@ -394,57 +330,145 @@ export function AnalyticsView({ tasks, activityEvents }: AnalyticsViewProps) {
 
       </div>
 
-      {/* 3. DETAILED EVENT DIARY slab for selected heat point */}
-      {selectedDateStr && (
-        <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] space-y-4 animate-fade-in" id="heatmap-day-details">
-          <div className="flex items-center justify-between border-b-2 border-black pb-2">
-            <h5 className="text-sm font-black text-black uppercase flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500 stroke-[3]" />
-              {selectedDateStr.replaceAll('-', '.')} 활동 일지
-            </h5>
-            <button
-              onClick={() => setSelectedDateStr(null)}
-              className="text-xs text-rose-600 font-bold hover:underline"
-            >
-              닫기 ✖
-            </button>
+      {/* 1. Monthly Summary Spotlight */}
+      <div className="bg-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] space-y-4">
+        <div className="flex items-center justify-between border-b-3 border-black pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="w-5.5 h-5.5 text-[#FF4D00] stroke-[3]" />
+            <h3 className="text-base font-black tracking-tight text-black uppercase">
+              {selectedYear}년 {monthNames[selectedMonth]} 의지력 통계
+            </h3>
+          </div>
+          <span className="text-xs font-bold font-mono bg-yellow-300 px-2 py-0.5 border-2 border-black inline-block shadow-[1.5px_1.5px_0px_0px_#000]">
+            WILLPOWER SCORE {totalMonthlyScore}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
+            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">새 미룬일</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-black font-mono">{addedTasksCount}</span>
+              <span className="text-xs text-zinc-500">개</span>
+            </div>
           </div>
 
-          {selectedDayInfo && selectedDayInfo.events.length > 0 ? (
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-              {selectedDayInfo.events.map((evt, idx) => (
-                <div 
-                  key={evt.id || idx}
-                  className="bg-[#F9F9F6] border-2 border-black p-2.5 flex items-start justify-between gap-3 text-xs shadow-[1.5px_1.5px_0px_0px_#000]"
-                >
-                  <div className="space-y-1 font-normal text-zinc-800">
-                    <span className="font-black text-[#FF4D00]">
-                      {typeLabels[evt.type] || evt.type}
+          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
+            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">새 세부과업</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-[#FF4D00] font-mono">{addedSubtasksCount}</span>
+              <span className="text-xs text-zinc-500">개</span>
+            </div>
+          </div>
+
+          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between col-span-2 sm:col-span-1">
+            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">격파완료 세부과업</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-emerald-600 font-mono">{completedSubtasksCount}</span>
+              <span className="text-xs text-zinc-500 font-normal">지점</span>
+            </div>
+          </div>
+
+          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
+            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">완료한 미룬일</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-blue-600 font-mono">{completedTasksCount}</span>
+              <span className="text-xs text-zinc-500">완수</span>
+            </div>
+          </div>
+
+          <div className="bg-[#F4F4F1] border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between">
+            <span className="text-[11px] text-zinc-650 font-bold block leading-tight">보류 및 포기</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-rose-500 font-mono">{abandonedOrPostponedCount}</span>
+              <span className="text-xs text-zinc-500">결심</span>
+            </div>
+          </div>
+
+          <div className="bg-amber-100 border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] flex flex-col justify-between col-span-2 sm:col-span-1">
+            <span className="text-[11px] text-amber-800 font-bold block leading-tight">총 활동 기록</span>
+            <div className="flex items-baseline gap-1 mt-2">
+              <span className="text-2xl font-black text-amber-900 font-mono">{currentMonthEvents.length}</span>
+              <span className="text-xs text-amber-850">건</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. DETAILED EVENT DIARY Modal Overlay for selected heat point */}
+      {selectedDateStr && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-fade-in" id="diary-modal-overlay">
+          <div className="bg-white border-4 border-black p-6 max-w-sm sm:max-w-md w-full shadow-[8px_8px_0px_0px_#000] relative">
+            
+            {/* Close Button at top right */}
+            <button
+              type="button"
+              onClick={() => setSelectedDateStr(null)}
+              className="absolute top-4 right-4 text-black hover:text-[#FF4D00] font-black text-lg p-1 select-none cursor-pointer focus:outline-none transition-colors"
+              aria-label="닫기"
+              id="diary-modal-close-x"
+            >
+              ✖
+            </button>
+
+            {/* Modal Title */}
+            <div className="flex items-center gap-2 border-b-3 border-black pb-3 mb-4">
+              <Sparkles className="w-5.5 h-5.5 text-amber-500 stroke-[3]" />
+              <h3 className="text-base sm:text-lg font-black text-black uppercase">
+                {selectedDateStr.replaceAll('-', '.')} 활동 일지 📝
+              </h3>
+            </div>
+
+            {/* Modal Content */}
+            {selectedDayInfo && selectedDayInfo.events.length > 0 ? (
+              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                {selectedDayInfo.events.map((evt, idx) => (
+                  <div 
+                    key={evt.id || idx}
+                    className="bg-[#F9F9F6] border-2 border-black p-2.5 flex items-start justify-between gap-3 text-xs shadow-[1.5px_1.5px_0px_0px_#000]"
+                  >
+                    <div className="space-y-1 font-normal text-zinc-[850] max-w-[240px] sm:max-w-xs">
+                      <span className="font-black text-[#FF4D00]">
+                        {typeLabels[evt.type] || evt.type}
+                      </span>
+                      {evt.taskTitle && (
+                        <p className="text-zinc-[650] truncate text-[11px]">
+                          과업명: <span className="font-semibold text-black">&lsquo;{evt.taskTitle}&rsquo;</span>
+                        </p>
+                      )}
+                    </div>
+                    <span className="font-mono text-[10px] text-zinc-500 shrink-0">
+                      {new Date(evt.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </span>
-                    {evt.taskTitle && (
-                      <p className="text-zinc-[650] max-w-sm truncate">
-                        과업명: <span className="font-semibold text-black">&lsquo;{evt.taskTitle}&rsquo;</span>
-                      </p>
-                    )}
                   </div>
-                  <span className="font-mono text-[10px] text-zinc-500 shrink-0">
-                    {new Date(evt.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-[#F9F9F6] border-2 border-dashed border-zinc-350">
+                <p className="text-xs font-normal text-zinc-500">당일의 의지 분출 기록이 보이지 않습니다. 🌱</p>
+                <p className="text-[11px] mt-1 font-normal text-zinc-450">달력의 다른 유색 타일을 클릭해 보세요!</p>
+              </div>
+            )}
+
+            {/* Confirm Close Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedDateStr(null)}
+                className="px-5 py-2 border-2 border-black font-black text-xs bg-[#F4F4F1] text-black hover:bg-zinc-200 transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000] cursor-pointer"
+                id="diary-modal-close-btn"
+              >
+                닫기
+              </button>
             </div>
-          ) : (
-            <div className="text-center py-8 bg-[#F9F9F6] border-2 border-dashed border-zinc-350">
-              <p className="text-xs font-normal text-zinc-500">당일의 의지 분출 기록이 보이지 않습니다. 🌱</p>
-              <p className="text-[11px] mt-1 font-normal text-zinc-450">달력의 다른 유색 타일을 클릭해 보세요!</p>
-            </div>
-          )}
+
+          </div>
         </div>
       )}
 
       {/* Formula Modal Overlay */}
       {isFormulaModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="formula-modal-overlay">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-fade-in" id="formula-modal-overlay">
           <div className="bg-white border-4 border-black p-6 max-w-sm sm:max-w-md w-full shadow-[8px_8px_0px_0px_#000] relative">
             
             {/* Close Button at top right */}
