@@ -24,6 +24,7 @@ interface HomeViewProps {
   setFilterTags: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   sortBy: string;
   setSortBy: React.Dispatch<React.SetStateAction<string>>;
+  homeHighlightTaskId?: string | null;
 }
 
 export function HomeView({
@@ -39,7 +40,8 @@ export function HomeView({
   filterTags,
   setFilterTags,
   sortBy,
-  setSortBy
+  setSortBy,
+  homeHighlightTaskId
 }: HomeViewProps) {
   const pendingTasks = useMemo(() => tasks.filter(t => t.status === 'pending' || t.status === 'active'), [tasks]);
   
@@ -332,22 +334,37 @@ export function HomeView({
               else if (severityScore >= 8) severityBg = 'bg-amber-400';
               else if (severityScore >= 4) severityBg = 'bg-yellow-300';
 
-              return (
-                <button 
-                  key={task.id}
-                  onClick={() => onStartTask(task.id)}
-                  className="w-full text-left bg-white border-4 border-black p-5 md:p-6 shadow-[5px_5px_0px_0px_#000] relative overflow-hidden transition-all duration-200 hover:bg-[#FFFDF6] hover:shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 group focus:outline-none block cursor-pointer"
-                >
-                  <div className="absolute top-0 right-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-[#FF4D00]/10 pointer-events-none filter blur-xl" />
+              const isHighlighted = homeHighlightTaskId && task.id === homeHighlightTaskId;
 
-                  {/* Top card row: Badge */}
-                  <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-normal border-2 border-black px-2 py-0.5 ${severityBg} text-black shadow-[1.5px_1.5px_0px_0px_#000]`}>
-                        {severity.text}
-                      </span>
+              return (
+                <motion.div
+                  key={task.id}
+                  layoutId={`task-card-container-${task.id}`}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 25 }}
+                  className={`${isHighlighted ? 'ring-4 ring-[#FF4D00] ring-offset-2 rounded-none animate-pulse z-10' : ''}`}
+                >
+                  <button 
+                    onClick={() => onStartTask(task.id)}
+                    className={`w-full text-left border-4 border-black p-5 md:p-6 shadow-[5px_5px_0px_0px_#000] relative overflow-hidden transition-all duration-200 hover:bg-[#FFFDF6] hover:shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 group focus:outline-none block cursor-pointer ${isHighlighted ? 'bg-amber-50/80 border-[#FF4D00]' : 'bg-white'}`}
+                  >
+                    <div className="absolute top-0 right-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-[#FF4D00]/10 pointer-events-none filter blur-xl" />
+
+                    {/* Top card row: Badge */}
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-normal border-2 border-black px-2 py-0.5 ${severityBg} text-black shadow-[1.5px_1.5px_0px_0px_#000]`}>
+                          {severity.text}
+                        </span>
+                      </div>
+                      {isHighlighted && (
+                        <span className="bg-[#FF4D00] text-white text-[10px] font-black border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_0px_#000] uppercase tracking-wider animate-bounce">
+                          🔁 반복 시작된 일 (복사본)
+                        </span>
+                      )}
                     </div>
-                  </div>
 
                   {/* Simplified trajectory info (one-line) - Moved ABOVE title, no box, styled highlights */}
                   <p className="text-sm font-normal text-zinc-650 mb-2 leading-relaxed relative z-10">
@@ -435,6 +452,7 @@ export function HomeView({
                     {renderSubTaskSummary(task)}
                   </div>
                 </button>
+              </motion.div>
               );
             })
           ) : (

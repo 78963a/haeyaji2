@@ -14,7 +14,7 @@ interface ActiveFocusViewProps {
   task: Task;
   settings: AppSettings;
   onPauseTask: (id: string) => void;
-  onCompleteTask: (id: string) => void;
+  onCompleteTask: (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks') => void;
   onAbandonTask: (id: string, reason: string) => void;
   onGiveUpTask: (id: string, reason: string) => void;
   onDeleteTask: (id: string) => void;
@@ -47,6 +47,7 @@ export function ActiveFocusView({
   const [newStepTitle, setNewStepTitle] = useState('');
   const [selectedAction, setSelectedAction] = useState<'complete' | 'abandon' | 'give_up' | 'delete' | null>(null);
   const [actionReason, setActionReason] = useState('');
+  const [repeatOption, setRepeatOption] = useState<'none' | 'only_metadata' | 'with_subtasks'>('none');
 
   // Subtask edit modal states
   const [editingSubtask, setEditingSubtask] = useState<SubTask | null>(null);
@@ -142,7 +143,7 @@ export function ActiveFocusView({
   };
 
   const handleCompleteSuccess = () => {
-    onCompleteTask(task.id);
+    onCompleteTask(task.id, repeatOption);
     setSelectedAction(null);
   };
 
@@ -730,6 +731,51 @@ export function ActiveFocusView({
                         </span>
                       )}
                     </p>
+
+                    {/* 같은 일 반복 시행(복사) 선택지 */}
+                    <div className="bg-[#FFFDF0] p-4 border-2 border-black space-y-2 text-left" id="repeat-selection-container">
+                      <div className="flex items-center gap-1.5 font-bold text-black text-xs">
+                        <span className="text-base">🔁</span>
+                        <span>같은 일 반복 시행 (Cloning / Repeat options)</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-550 leading-normal font-normal">
+                        이 과업(프로젝트)은 주기적으로 반복해야 하는 일인가요? 완료 후 복사본을 만들어 즉시 홈화면에 신규 등록해드립니다!
+                      </p>
+                      
+                      <div className="space-y-1.5 pt-1 text-[11px] font-medium text-black">
+                        <label className="flex items-center gap-2 cursor-pointer py-1 hover:bg-zinc-100/50 px-1 transition duration-150">
+                          <input 
+                            type="radio" 
+                            name="repeat-option" 
+                            checked={repeatOption === 'none'} 
+                            onChange={() => setRepeatOption('none')}
+                            className="w-4 h-4 cursor-pointer accent-[#FF4D00]"
+                          />
+                          <span>단발성 일 (복사하지 않고 완료 후 보관함으로만 이동)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer py-1 hover:bg-zinc-100/50 px-1 transition duration-150">
+                          <input 
+                            type="radio" 
+                            name="repeat-option" 
+                            checked={repeatOption === 'only_metadata'} 
+                            onChange={() => setRepeatOption('only_metadata')}
+                            className="w-4 h-4 cursor-pointer accent-[#FF4D00]"
+                          />
+                          <span>제목과 설명만 복사하여 반복 시행 📝</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer py-1 hover:bg-zinc-100/50 px-1 transition duration-150">
+                          <input 
+                            type="radio" 
+                            name="repeat-option" 
+                            checked={repeatOption === 'with_subtasks'} 
+                            onChange={() => setRepeatOption('with_subtasks')}
+                            className="w-4 h-4 cursor-pointer accent-[#FF4D00]"
+                          />
+                          <span>제목, 설명, 세부할일목록 모두 복사하여 반복 시행 (모두 미시행 상태로) 📋</span>
+                        </label>
+                      </div>
+                    </div>
+
                     <div className="flex gap-2.5 text-xs pt-1.5">
                       <button
                         type="button"

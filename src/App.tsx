@@ -59,6 +59,7 @@ export default function App() {
   // Archive View routing and animation presets
   const [archiveDefaultTab, setArchiveDefaultTab] = useState<'completed' | 'abandoned' | 'given_up'>('completed');
   const [archiveHighlightTaskId, setArchiveHighlightTaskId] = useState<string | null>(null);
+  const [homeHighlightTaskId, setHomeHighlightTaskId] = useState<string | null>(null);
 
   // Core visual status animation overlay
   const [taskTransition, setTaskTransition] = useState<{
@@ -67,7 +68,7 @@ export default function App() {
     type: 'complete' | 'abandon' | 'give_up' | 'delete';
   } | null>(null);
 
-  const handleTransitionCompleteTask = (id: string) => {
+  const handleTransitionCompleteTask = (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks') => {
     const taskObj = tasks.find(t => t.id === id);
     if (!taskObj) return;
 
@@ -83,6 +84,35 @@ export default function App() {
       setArchiveHighlightTaskId(id);
       setActiveView('archive');
       setTaskTransition(null);
+
+      // If repeating is requested, let's schedule returning to home and creating a clone!
+      if (repeatOption && repeatOption !== 'none') {
+        setTimeout(() => {
+          // 1. Prepare cloned subtasks
+          const subtaskTitles = repeatOption === 'with_subtasks'
+            ? taskObj.subtasks.map(s => s.title)
+            : [];
+
+          // 2. Clone/Add task
+          const clonedTask = addTask(
+            taskObj.title,
+            taskObj.description || '',
+            { ...taskObj.tags },
+            subtaskTitles
+          );
+
+          if (clonedTask) {
+            setHomeHighlightTaskId(clonedTask.id);
+            // Clear home highlight after 4 seconds
+            setTimeout(() => {
+              setHomeHighlightTaskId(null);
+            }, 4000);
+          }
+
+          // 3. Smoothly switch back to Home View
+          setActiveView('home');
+        }, 1800); // Wait on archive screen so user sees completed status, then return to home and add clone!
+      }
     }, 1800);
   };
 
@@ -729,6 +759,7 @@ export default function App() {
                 setFilterTags={setFilterTags}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
+                homeHighlightTaskId={homeHighlightTaskId}
               />
             )}
 

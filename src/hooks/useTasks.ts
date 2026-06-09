@@ -17,6 +17,8 @@ localforage.config({
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const tasksRef = useRef<Task[]>(tasks);
+  tasksRef.current = tasks;
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
     customTags: DEFAULT_TAG_CATEGORIES
@@ -174,7 +176,7 @@ export function useTasks() {
 
   // Help log a user activity contribution
   const logActivity = (type: AppEvent['type'], taskId?: string, optionalTitle?: string) => {
-    const title = optionalTitle || tasks.find(t => t.id === taskId)?.title || '';
+    const title = optionalTitle || tasksRef.current.find(t => t.id === taskId)?.title || '';
     const newEvent: AppEvent = {
       id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       type,
@@ -232,7 +234,7 @@ export function useTasks() {
     }
   };
 
-  const addTask = (title: string, description: string, tags: TaskTags, subtaskTitles: string[], customCreatedAt?: string) => {
+  const addTask = (title: string, description: string, tags: TaskTags, subtaskTitles: string[], customCreatedAt?: string): Task => {
     const newSub: SubTask[] = subtaskTitles
       .filter((t) => t.trim() !== '')
       .map((t, idx) => ({
@@ -254,16 +256,17 @@ export function useTasks() {
       cheersCount: 0
     };
 
-    const updated = [newTask, ...tasks];
+    const updated = [newTask, ...tasksRef.current];
     saveTasksToLocalForage(updated);
     logActivity('add_task', newTask.id, newTask.title);
     newSub.forEach(() => {
       logActivity('add_subtask', newTask.id, newTask.title);
     });
+    return newTask;
   };
 
   const updateTask = (updatedTask: Task) => {
-    const updated = tasks.map((t) => (t.id === updatedTask.id ? { ...updatedTask, lastOperatedAt: new Date().toISOString() } : t));
+    const updated = tasksRef.current.map((t) => (t.id === updatedTask.id ? { ...updatedTask, lastOperatedAt: new Date().toISOString() } : t));
     saveTasksToLocalForage(updated);
     logActivity('edit_task', updatedTask.id, updatedTask.title);
   };
@@ -273,13 +276,13 @@ export function useTasks() {
       setActiveTaskId(null);
       localforage.removeItem('haeyaji_active_task_id');
     }
-    const updated = tasks.filter((t) => t.id !== id);
+    const updated = tasksRef.current.filter((t) => t.id !== id);
     saveTasksToLocalForage(updated);
   };
 
   const startTask = (id: string) => {
     // If there is another task active, pause it first
-    let tempTasks = [...tasks];
+    let tempTasks = [...tasksRef.current];
     if (activeTaskId && activeTaskId !== id) {
       tempTasks = tempTasks.map((t) =>
         t.id === activeTaskId ? { ...t, status: 'pending' as const } : t
@@ -304,7 +307,7 @@ export function useTasks() {
   };
 
   const pauseTask = (id: string) => {
-    const updated = tasks.map((t) => {
+    const updated = tasksRef.current.map((t) => {
       if (t.id === id) {
         return { ...t, status: 'pending' as const, lastOperatedAt: new Date().toISOString() };
       }
@@ -316,7 +319,7 @@ export function useTasks() {
   };
 
   const completeTask = (id: string) => {
-    const updated = tasks.map((t) => {
+    const updated = tasksRef.current.map((t) => {
       if (t.id === id) {
         // Automatically complete all unfinished subtasks if user hits overall done
         const resolvedSubtasks = t.subtasks.map((st) =>
@@ -339,7 +342,7 @@ export function useTasks() {
     }
     saveTasksToLocalForage(updated);
 
-    const t = tasks.find((x) => x.id === id);
+    const t = tasksRef.current.find((x) => x.id === id);
     if (t) {
       logActivity('complete_task', id, t.title);
       t.subtasks.forEach((st) => {
@@ -351,7 +354,7 @@ export function useTasks() {
   };
 
   const abandonTask = (id: string, reason: string) => {
-    const updated = tasks.map((t) => {
+    const updated = tasksRef.current.map((t) => {
       if (t.id === id) {
         return {
           ...t,
@@ -370,14 +373,14 @@ export function useTasks() {
     }
     saveTasksToLocalForage(updated);
 
-    const t = tasks.find((x) => x.id === id);
+    const t = tasksRef.current.find((x) => x.id === id);
     if (t) {
       logActivity('abandon_task', id, t.title);
     }
   };
 
   const giveUpTask = (id: string, reason: string) => {
-    const updated = tasks.map((t) => {
+    const updated = tasksRef.current.map((t) => {
       if (t.id === id) {
         return {
           ...t,
@@ -396,17 +399,17 @@ export function useTasks() {
     }
     saveTasksToLocalForage(updated);
 
-    const t = tasks.find((x) => x.id === id);
+    const t = tasksRef.current.find((x) => x.id === id);
     if (t) {
       logActivity('give_up_task', id, t.title);
     }
   };
 
   const toggleSubtask = (taskId: string, subtaskId: string) => {
-    const tCheck = tasks.find((x) => x.id === taskId);
+    const tCheck = tasksRef.current.find((x) => x.id === taskId);
     const stCheck = tCheck?.subtasks.find((x) => x.id === subtaskId);
     
-    const updated = tasks.map((t) => {
+    const updated = tasksRef.current.map((t) => {
       if (t.id === taskId) {
         const nextSub = t.subtasks.map((st) => {
           if (st.id === subtaskId) {
