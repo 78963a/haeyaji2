@@ -56,6 +56,91 @@ export default function App() {
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<null | 'unstarted' | 'inprogress' | 'completed'>(null);
   const [urgeIndex, setUrgeIndex] = useState(0);
 
+  // Archive View routing and animation presets
+  const [archiveDefaultTab, setArchiveDefaultTab] = useState<'completed' | 'abandoned' | 'given_up'>('completed');
+  const [archiveHighlightTaskId, setArchiveHighlightTaskId] = useState<string | null>(null);
+
+  // Core visual status animation overlay
+  const [taskTransition, setTaskTransition] = useState<{
+    id: string;
+    title: string;
+    type: 'complete' | 'abandon' | 'give_up' | 'delete';
+  } | null>(null);
+
+  const handleTransitionCompleteTask = (id: string) => {
+    const taskObj = tasks.find(t => t.id === id);
+    if (!taskObj) return;
+
+    setTaskTransition({
+      id,
+      title: taskObj.title,
+      type: 'complete'
+    });
+
+    setTimeout(() => {
+      completeTask(id);
+      setArchiveDefaultTab('completed');
+      setArchiveHighlightTaskId(id);
+      setActiveView('archive');
+      setTaskTransition(null);
+    }, 1800);
+  };
+
+  const handleTransitionAbandonTask = (id: string, reason: string) => {
+    const taskObj = tasks.find(t => t.id === id);
+    if (!taskObj) return;
+
+    setTaskTransition({
+      id,
+      title: taskObj.title,
+      type: 'abandon'
+    });
+
+    setTimeout(() => {
+      abandonTask(id, reason);
+      setArchiveDefaultTab('abandoned');
+      setArchiveHighlightTaskId(id);
+      setActiveView('archive');
+      setTaskTransition(null);
+    }, 1800);
+  };
+
+  const handleTransitionGiveUpTask = (id: string, reason: string) => {
+    const taskObj = tasks.find(t => t.id === id);
+    if (!taskObj) return;
+
+    setTaskTransition({
+      id,
+      title: taskObj.title,
+      type: 'give_up'
+    });
+
+    setTimeout(() => {
+      giveUpTask(id, reason);
+      setArchiveDefaultTab('given_up');
+      setArchiveHighlightTaskId(id);
+      setActiveView('archive');
+      setTaskTransition(null);
+    }, 1800);
+  };
+
+  const handleTransitionDeleteTask = (id: string) => {
+    const taskObj = tasks.find(t => t.id === id);
+    if (!taskObj) return;
+
+    setTaskTransition({
+      id,
+      title: taskObj.title,
+      type: 'delete'
+    });
+
+    setTimeout(() => {
+      deleteTask(id);
+      setActiveView('home');
+      setTaskTransition(null);
+    }, 1800);
+  };
+
   // App-wide Custom Modal State
   const [appModal, setAppModal] = useState<{
     type: 'alert' | 'confirm';
@@ -390,6 +475,8 @@ export default function App() {
                 onStartTask={handleStartTaskAndRedirect}
                 onDeleteTask={deleteTask}
                 onUpdateTask={updateTask}
+                highlightTaskId={archiveHighlightTaskId}
+                defaultTab={archiveDefaultTab}
               />
             )}
 
@@ -407,10 +494,10 @@ export default function App() {
                 task={activeTask}
                 settings={settings}
                 onPauseTask={pauseTask}
-                onCompleteTask={completeTask}
-                onAbandonTask={abandonTask}
-                onGiveUpTask={giveUpTask}
-                onDeleteTask={deleteTask}
+                onCompleteTask={handleTransitionCompleteTask}
+                onAbandonTask={handleTransitionAbandonTask}
+                onGiveUpTask={handleTransitionGiveUpTask}
+                onDeleteTask={handleTransitionDeleteTask}
                 onToggleSubtask={toggleSubtask}
                 onUpdateSubtaskTitle={updateSubtaskTitle}
                 onAddSubtask={addSubtaskToTask}
@@ -743,6 +830,93 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 5. GORGEOUS TASK TRANSITION OVERLAY */}
+      <AnimatePresence>
+        {taskTransition && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 ${
+              taskTransition.type === 'complete' ? 'bg-[#000000e5] backdrop-blur-sm' :
+              taskTransition.type === 'abandon' ? 'bg-[#0a0a0aec] backdrop-blur-sm' :
+              taskTransition.type === 'give_up' ? 'bg-[#0e0505ef] backdrop-blur-sm' :
+              'bg-[#120000f2] backdrop-blur-sm'
+            }`}
+            id="task-transition-overlay"
+          >
+            {/* Visual Particle / Accent Circle behind */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: [1, 1.1, 1], opacity: [0.15, 0.35, 0.2] }}
+              transition={{ repeat: Infinity, duration: 2.5 }}
+              className={`absolute h-72 w-72 rounded-full filter blur-2xl pointer-events-none ${
+                taskTransition.type === 'complete' ? 'bg-emerald-500' :
+                taskTransition.type === 'abandon' ? 'bg-amber-500' :
+                taskTransition.type === 'give_up' ? 'bg-rose-500' :
+                'bg-red-600'
+              }`}
+            />
+
+            <div className="relative text-center max-w-sm space-y-6 px-4">
+              {/* Animated Icon with high-scale spring bounce */}
+              <motion.div
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 15 }}
+                className="mx-auto flex items-center justify-center h-20 w-20 rounded-full border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000]"
+              >
+                {taskTransition.type === 'complete' && <span className="text-4xl">🎉</span>}
+                {taskTransition.type === 'abandon' && <span className="text-4xl">⏸️</span>}
+                {taskTransition.type === 'give_up' && <span className="text-4xl">☠️</span>}
+                {taskTransition.type === 'delete' && <span className="text-4xl">🗑️</span>}
+              </motion.div>
+
+              <div className="space-y-2">
+                <motion.h3 
+                  initial={{ y: 15, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-lg md:text-xl font-black text-white uppercase tracking-tight filter drop-shadow-[1px_1px_1px_#000]"
+                >
+                  {taskTransition.type === 'complete' && '임무 완전 완수!'}
+                  {taskTransition.type === 'abandon' && '임무 보류함 이송 완료'}
+                  {taskTransition.type === 'give_up' && '미련 없이 과업 포기'}
+                  {taskTransition.type === 'delete' && '흔적 없이 완전 삭제'}
+                </motion.h3>
+
+                <motion.p
+                  initial={{ y: 15, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.18 }}
+                  className="text-xs text-zinc-300 font-semibold leading-relaxed"
+                >
+                  &ldquo;{taskTransition.title}&rdquo;
+                </motion.p>
+              </div>
+
+              {/* Subtitle describing what is happening */}
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className={`py-2 px-4 border-2 border-black font-bold text-xs shadow-[3px_3px_0px_0px_#000] text-black ${
+                  taskTransition.type === 'complete' ? 'bg-[#a7f3d0]' :
+                  taskTransition.type === 'abandon' ? 'bg-[#fef3c7]' :
+                  taskTransition.type === 'give_up' ? 'bg-[#fecdd3]' :
+                  'bg-red-400 text-white'
+                }`}
+              >
+                {taskTransition.type === 'complete' && '성공적으로 끝마쳤습니다! 보관함 이송 중...'}
+                {taskTransition.type === 'abandon' && '더 완벽한 다음 기회로 보관 처리 중...'}
+                {taskTransition.type === 'give_up' && '마음의 부담을 비웠습니다. 무덤으로 이동 중...'}
+                {taskTransition.type === 'delete' && '기억 저편으로 온전히 격하시킨 뒤 복귀 중...'}
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Task } from '../types';
 import { CheckCircle2, XCircle, RotateCcw, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,10 +13,25 @@ interface ArchiveViewProps {
   onStartTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTask: (task: Task) => void;
+  highlightTaskId?: string | null;
+  defaultTab?: 'completed' | 'abandoned' | 'given_up';
 }
 
-export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: ArchiveViewProps) {
-  const [activeTab, setActiveTab] = useState<'completed' | 'abandoned' | 'given_up'>('completed');
+export function ArchiveView({ 
+  tasks, 
+  onStartTask, 
+  onDeleteTask, 
+  onUpdateTask,
+  highlightTaskId,
+  defaultTab
+}: ArchiveViewProps) {
+  const [activeTab, setActiveTab] = useState<'completed' | 'abandoned' | 'given_up'>(defaultTab || 'completed');
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   // Virtual Modal Dialog State
   const [modalDialog, setModalDialog] = useState<{
@@ -64,7 +79,17 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
           }`}
           id="archive-tab-completed"
         >
-          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2]" /> 완료 ({completedTasks.length})
+          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2]" /> 완료 (
+          <motion.span
+            key={completedTasks.length}
+            initial={{ scale: 1.6, color: '#10B981', fontWeight: 'bold' }}
+            animate={{ scale: 1, color: 'inherit' }}
+            transition={{ type: 'spring', stiffness: 350, damping: 15 }}
+            className="inline-block"
+          >
+            {completedTasks.length}
+          </motion.span>
+          )
         </button>
         <button
           onClick={() => setActiveTab('abandoned')}
@@ -75,7 +100,17 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
           }`}
           id="archive-tab-abandoned"
         >
-          <XCircle className="w-3.5 h-3.5 stroke-[2]" /> 보류 ({abandonedTasks.length})
+          <XCircle className="w-3.5 h-3.5 stroke-[2]" /> 보류 (
+          <motion.span
+            key={abandonedTasks.length}
+            initial={{ scale: 1.6, color: '#D97706', fontWeight: 'bold' }}
+            animate={{ scale: 1, color: 'inherit' }}
+            transition={{ type: 'spring', stiffness: 350, damping: 15 }}
+            className="inline-block"
+          >
+            {abandonedTasks.length}
+          </motion.span>
+          )
         </button>
         <button
           onClick={() => setActiveTab('given_up')}
@@ -89,7 +124,17 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
             backgroundColor: activeTab === 'given_up' ? '#fecdd3' : undefined
           }}
         >
-          <XCircle className="w-3.5 h-3.5 stroke-[2]" /> 포기 ({givenUpTasks.length})
+          <XCircle className="w-3.5 h-3.5 stroke-[2]" /> 포기 (
+          <motion.span
+            key={givenUpTasks.length}
+            initial={{ scale: 1.6, color: '#E11D48', fontWeight: 'bold' }}
+            animate={{ scale: 1, color: 'inherit' }}
+            transition={{ type: 'spring', stiffness: 350, damping: 15 }}
+            className="inline-block"
+          >
+            {givenUpTasks.length}
+          </motion.span>
+          )
         </button>
       </div>
 
@@ -104,11 +149,14 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
             className="space-y-3.5"
             id="archive-panel-completed"
           >
-            <div className="text-sm text-black font-normal uppercase mb-1">🎯 미룸의 고리를 장렬히 돌파한 훈장터:</div>
+            <div className="text-sm text-black font-normal uppercase mb-1">🎯 미룸의 끝 (해낸 일들의 요람):</div>
             {completedTasks.length > 0 ? (
               completedTasks.map((task) => (
-                <div 
+                <motion.div 
                   key={task.id}
+                  initial={task.id === highlightTaskId ? { scale: 1.04, backgroundColor: "#d1fae5", borderColor: "#10b981", boxShadow: "0px 0px 15px rgba(16, 185, 129, 0.45)" } : { scale: 1 }}
+                  animate={{ scale: 1, backgroundColor: "#ffffff", borderColor: "#000000", boxShadow: "4px 4px 0px 0px #000" }}
+                  transition={task.id === highlightTaskId ? { duration: 3, delay: 0.1 } : { duration: 0.2 }}
                   className="bg-white border-3 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 shadow-[4px_4px_0px_0px_#000]"
                   id={`completed-task-card-${task.id}`}
                 >
@@ -163,7 +211,7 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
                       <Trash2 className="w-4 h-4 stroke-[2]" />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))
             ) : (
               <div className="text-center py-12 text-black border-4 border-dashed border-black bg-white shadow-[4px_4px_0px_0px_#000]">
@@ -192,8 +240,11 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
 
             {abandonedTasks.length > 0 ? (
               abandonedTasks.map((task) => (
-                <div 
+                <motion.div 
                   key={task.id}
+                  initial={task.id === highlightTaskId ? { scale: 1.04, backgroundColor: "#fef3c7", borderColor: "#f59e0b", boxShadow: "0px 0px 15px rgba(245, 158, 11, 0.45)" } : { scale: 1 }}
+                  animate={{ scale: 1, backgroundColor: "#ffffff", borderColor: "#000000", boxShadow: "4px 4px 0px 0px #000" }}
+                  transition={task.id === highlightTaskId ? { duration: 3, delay: 0.1 } : { duration: 0.2 }}
                   className="bg-white border-3 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 shadow-[4px_4px_0px_0px_#000]"
                   id={`abandoned-task-card-${task.id}`}
                 >
@@ -251,7 +302,7 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
                       <Trash2 className="w-4 h-4 stroke-[2]" />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))
             ) : (
               <div className="text-center py-12 text-black border-4 border-dashed border-black bg-white shadow-[4px_4px_0px_0px_#000]">
@@ -269,19 +320,17 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="space-y-3.5"
-            id="archive-panel-givenup"
+            id="archive-panel-given_up"
           >
-            <div className="text-sm text-black font-normal uppercase mb-1">☠️ 과감한 포기 무덤 (마음을 가볍게 한 비워냄):</div>
+            <div className="text-sm text-black font-normal uppercase mb-1">☠️ 과감히 내려놓은 무덤 (포기한 일들의 안식처):</div>
             
-            <div className="bg-rose-50 border-3 border-rose-300 p-4 text-zinc-800 text-xs font-normal leading-relaxed shadow-[4px_4px_0px_0px_#000]">
-              <span className="text-lg mr-1 filter drop-shadow-[1px_1px_0_#000]">☠️</span>
-              포기는 또 다른 집중을 찾아 지혜롭게 물러설 줄 아는 용기 있는 실천입니다! 자책할 필요는 전혀 없으며, 덜 중요한 것들을 버려서 생긴 소중한 자원을 진짜 중요한 일에 집중시키세요.
-            </div>
-
             {givenUpTasks.length > 0 ? (
               givenUpTasks.map((task) => (
-                <div 
+                <motion.div 
                   key={task.id}
+                  initial={task.id === highlightTaskId ? { scale: 1.04, backgroundColor: "#fee2e2", borderColor: "#f43f5e", boxShadow: "0px 0px 15px rgba(244, 63, 94, 0.45)" } : { scale: 1 }}
+                  animate={{ scale: 1, backgroundColor: "#ffffff", borderColor: "#000000", boxShadow: "4px 4px 0px 0px #000" }}
+                  transition={task.id === highlightTaskId ? { duration: 3, delay: 0.1 } : { duration: 0.2 }}
                   className="bg-white border-3 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 shadow-[4px_4px_0px_0px_#000]"
                   id={`givenup-task-card-${task.id}`}
                 >
@@ -339,7 +388,7 @@ export function ArchiveView({ tasks, onStartTask, onDeleteTask, onUpdateTask }: 
                       <Trash2 className="w-4 h-4 stroke-[2]" />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))
             ) : (
               <div className="text-center py-12 text-black border-4 border-dashed border-black bg-white shadow-[4px_4px_0px_0px_#000]">

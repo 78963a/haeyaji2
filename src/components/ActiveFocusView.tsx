@@ -8,7 +8,7 @@ import { Task, AppSettings, SubTask } from '../types';
 import { Play, Pause, CheckCircle, XCircle, AlertTriangle, Plus, Sliders, Trash2, Edit2, RotateCcw, X, Check, Copy } from 'lucide-react';
 import { DEFAULT_TAG_CATEGORIES } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatKoreanDate, getDaysElapsed, getDurationElapsedText, getFriendlyDaysAgo } from '../utils/dateUtils';
+import { formatKoreanDate, getDaysElapsed, getDurationElapsedText, getFriendlyDaysAgo, getSubtaskDurationText } from '../utils/dateUtils';
 
 interface ActiveFocusViewProps {
   task: Task;
@@ -144,16 +144,6 @@ export function ActiveFocusView({
   const handleCompleteSuccess = () => {
     onCompleteTask(task.id);
     setSelectedAction(null);
-    setModalDialog({
-      type: 'alert',
-      title: '🎉 축하합니다!',
-      message: '장하다! 드디어 미뤘던 큰 짐을 무조건 덜어내셨군요!! 고생하셨습니다.',
-      confirmText: '확인',
-      onConfirm: () => {
-        setModalDialog(null);
-        onBackToHome();
-      }
-    });
   };
 
   const handleExecuteAbandon = () => {
@@ -173,16 +163,6 @@ export function ActiveFocusView({
     onAbandonTask(task.id, finalReason);
     setSelectedAction(null);
     setActionReason('');
-    setModalDialog({
-      type: 'alert',
-      title: '⏸️ 보류 이송 완료',
-      message: '이 할 일이 보류 보관함으로 무사히 소환되었습니다.',
-      confirmText: '확인',
-      onConfirm: () => {
-        setModalDialog(null);
-        onBackToHome();
-      }
-    });
   };
 
   const handleExecuteGiveUp = () => {
@@ -202,31 +182,11 @@ export function ActiveFocusView({
     onGiveUpTask(task.id, finalReason);
     setSelectedAction(null);
     setActionReason('');
-    setModalDialog({
-      type: 'alert',
-      title: '☠️ 포기 결정 완료',
-      message: '이 할 일을 과감하게 털어버리고 포기함에 기양하였습니다.',
-      confirmText: '확인',
-      onConfirm: () => {
-        setModalDialog(null);
-        onBackToHome();
-      }
-    });
   };
 
   const handleExecuteDelete = () => {
     onDeleteTask(task.id);
     setSelectedAction(null);
-    setModalDialog({
-      type: 'alert',
-      title: '💥 영구 사멸',
-      message: '이 할일에 대한 모든 정보가 온데간데없이 영구 삭제되었습니다.',
-      confirmText: '확인',
-      onConfirm: () => {
-        setModalDialog(null);
-        onBackToHome();
-      }
-    });
   };
 
   const hasUncompletedSteps = useMemo(() => {
@@ -487,6 +447,11 @@ export function ActiveFocusView({
                             {isCompleted && st.completedAt && (
                               <span className="text-zinc-500 font-mono text-xs">
                                 완료: {formatToCustomDateTime(st.completedAt)}
+                              </span>
+                            )}
+                            {st.startedAt && st.completedAt && (
+                              <span className="text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 border border-emerald-300 font-mono text-xs">
+                                ⏱️ 소요: {getSubtaskDurationText(st.startedAt, st.completedAt)}
                               </span>
                             )}
                           </div>

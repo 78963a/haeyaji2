@@ -132,4 +132,60 @@ export function getFriendlyDaysAgo(dateStr: string): string {
   }
 }
 
+/**
+ * Returns a dynamically formatted duration string from startedAt to completedAt,
+ * displaying standard units cleanly from the largest non-zero unit.
+ */
+export function getSubtaskDurationText(startedAtStr: string, completedAtStr: string): string {
+  try {
+    const start = new Date(startedAtStr).getTime();
+    const end = new Date(completedAtStr).getTime();
+    if (isNaN(start) || isNaN(end)) return '';
+    const diffMs = end - start;
+    if (diffMs <= 0) return '0초';
+
+    let diffSecs = Math.floor(diffMs / 1000);
+
+    const secondsInMinute = 60;
+    const secondsInHour = 60 * secondsInMinute;
+    const secondsInDay = 24 * secondsInHour;
+    const secondsInMonth = 30 * secondsInDay;
+    const secondsInYear = 365 * secondsInDay;
+
+    const years = Math.floor(diffSecs / secondsInYear);
+    diffSecs %= secondsInYear;
+
+    const months = Math.floor(diffSecs / secondsInMonth);
+    diffSecs %= secondsInMonth;
+
+    const days = Math.floor(diffSecs / secondsInDay);
+    diffSecs %= secondsInDay;
+
+    const hours = Math.floor(diffSecs / secondsInHour);
+    diffSecs %= secondsInHour;
+
+    const minutes = Math.floor(diffSecs / secondsInMinute);
+    const seconds = diffSecs % secondsInMinute;
+
+    const units = [
+      { val: years, name: '년' },
+      { val: months, name: '개월' },
+      { val: days, name: '일' },
+      { val: hours, name: '시간' },
+      { val: minutes, name: '분' },
+      { val: seconds, name: '초' }
+    ];
+
+    const firstActiveIdx = units.findIndex(u => u.val > 0);
+    if (firstActiveIdx === -1) {
+      return '0초';
+    }
+
+    return units.slice(firstActiveIdx).map(u => `${u.val}${u.name}`).join(' ');
+  } catch {
+    return '';
+  }
+}
+
+
 
