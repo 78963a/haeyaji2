@@ -68,6 +68,12 @@ export default function App() {
     type: 'complete' | 'abandon' | 'give_up' | 'delete';
   } | null>(null);
 
+  // Task restore conflict resolution state
+  const [restoreConflict, setRestoreConflict] = useState<{
+    archivedTask: Task;
+    activeTask: Task;
+  } | null>(null);
+
   const handleTransitionCompleteTask = (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks') => {
     const taskObj = tasks.find(t => t.id === id);
     if (!taskObj) return;
@@ -79,6 +85,23 @@ export default function App() {
     });
 
     setTimeout(() => {
+      let finalCompletedTask = taskObj;
+
+      // 1. If repeating is enabled, parse current round and rename if necessary
+      if (repeatOption && repeatOption !== 'none') {
+        const match = taskObj.title.trim().match(/^(.*?)\s*(\d+)회차$/);
+        let baseTitle = taskObj.title.trim();
+        
+        if (!match) {
+          // If first repeat, update the completed original title to the "1회차" format
+          finalCompletedTask = {
+            ...taskObj,
+            title: `${baseTitle} 1회차`
+          };
+          updateTask(finalCompletedTask);
+        }
+      }
+
       completeTask(id);
       setArchiveDefaultTab('completed');
       setArchiveHighlightTaskId(id);
@@ -93,9 +116,22 @@ export default function App() {
             ? taskObj.subtasks.map(s => s.title)
             : [];
 
+          // Determine cloned title round index based on final completed task's title
+          const titleStr = finalCompletedTask.title;
+          const match = titleStr.trim().match(/^(.*?)\s*(\d+)회차$/);
+          let baseTitle = titleStr.trim();
+          let currentRound = 1;
+          
+          if (match) {
+            baseTitle = match[1].trim();
+            currentRound = parseInt(match[2], 10);
+          }
+          const nextRound = currentRound + 1;
+          const clonedTitle = `${baseTitle} ${nextRound}회차`;
+
           // 2. Clone/Add task
           const clonedTask = addTask(
-            taskObj.title,
+            clonedTitle,
             taskObj.description || '',
             { ...taskObj.tags },
             subtaskTitles
@@ -114,6 +150,55 @@ export default function App() {
         }, 1800); // Wait on archive screen so user sees completed status, then return to home and add clone!
       }
     }, 1800);
+  };
+
+  const getBaseTitle = (title: string): string => {
+    const match = title.trim().match(/^(.*?)\s*(\d+)회차$/);
+    return match ? match[1].trim() : title.trim();
+  };
+
+  const performRestoreTaskDirect = (taskObj: Task) => {
+    // 1. Mark task status as pending as per restore task requirement
+    const updated: Task = {
+      ...taskObj,
+      status: 'pending',
+      completedAt: undefined,
+      abandonedAt: undefined,
+      abandonReason: undefined,
+      cheersCount: taskObj.cheersCount + 1,
+      lastOperatedAt: new Date().toISOString()
+    };
+    
+    // Save/update task via hook
+    updateTask(updated);
+
+    // 2. Set highlight on home view card
+    setHomeHighlightTaskId(taskObj.id);
+    setTimeout(() => {
+      setHomeHighlightTaskId(null);
+    }, 4000);
+
+    // 3. Smoothly navigate to "home" view
+    setActiveView('home');
+  };
+
+  const handleRestoreTaskWithAnimation = (taskObj: Task) => {
+    const targetBase = getBaseTitle(taskObj.title).toLowerCase();
+    const activeDuplicate = tasks.find(t => 
+      t.id !== taskObj.id &&
+      (t.status === 'pending' || t.status === 'active') &&
+      getBaseTitle(t.title).toLowerCase() === targetBase
+    );
+
+    if (activeDuplicate) {
+      setRestoreConflict({
+        archivedTask: taskObj,
+        activeTask: activeDuplicate
+      });
+      return;
+    }
+
+    performRestoreTaskDirect(taskObj);
   };
 
   const handleTransitionAbandonTask = (id: string, reason: string) => {
@@ -300,11 +385,10 @@ export default function App() {
                     setActiveView('home');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="text-xs font-normal uppercase text-white bg-[#FF4D00] px-2.5 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:bg-black active:translate-y-0.5 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                  className="text-white bg-[#FF4D00] w-8 h-8 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:bg-black active:translate-y-0.5 transition-all flex items-center justify-center cursor-pointer shrink-0"
                   title="다른 미룬 일 촉구받기 (주사위 흔들기)"
                 >
-                  Haeyaji
-                  <Dices className="w-3.5 h-3.5 text-white stroke-[2.5] animate-pulse" />
+                  <Dices className="w-4 h-4 text-white stroke-[2.5] animate-pulse" />
                 </button>
               </h1>
             </div>
@@ -787,6 +871,7 @@ export default function App() {
                 onStartTask={handleStartTaskAndRedirect}
                 onDeleteTask={deleteTask}
                 onUpdateTask={updateTask}
+                onRestoreTask={handleRestoreTaskWithAnimation}
                 highlightTaskId={archiveHighlightTaskId}
                 defaultTab={archiveDefaultTab}
               />
@@ -1226,6 +1311,95 @@ export default function App() {
                 {taskTransition.type === 'delete' && '기억 저편으로 온전히 격하시킨 뒤 복귀 중...'}
               </motion.div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. DUPLICATE RESTORE CONFLICT MODAL */}
+      <AnimatePresence>
+        {restoreConflict && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[250] flex items-center justify-center p-4 text-black font-sans"
+            onClick={() => setRestoreConflict(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 15, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+              className="relative bg-[#FFFDF9] border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] w-full max-w-md text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-2.5 text-[#FF4D00] border-b-4 border-black pb-3.5 mb-4">
+                <AlertTriangle className="w-5 h-5 stroke-[2.5]" id="conflict-modal-icon" />
+                <span className="font-extrabold text-xs tracking-wider uppercase bg-black text-white px-2.5 py-1">
+                  할 일 회수 중복 경고
+                </span>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4">
+                <p className="text-sm font-black leading-snug">
+                  동일한 명칭의 할 일이 대기열에 이미 존재하고 있습니다.
+                </p>
+
+                <div className="bg-amber-50/50 border-2 border-black p-3.5 space-y-2 shadow-[2px_2px_0px_0px_#000]">
+                  <p className="text-xs font-bold text-zinc-800">
+                    할 일 제목: <span className="text-black underline">&ldquo;{restoreConflict.archivedTask.title}&rdquo;</span>
+                  </p>
+                  <p className="text-xs text-zinc-650 leading-relaxed">
+                    현재 대기열(2회차 복사본)과 완료 보관함(1회차 원본)에 해당 할 일이 모두 존재하고 있어, 그대로 회수할 경우 대기열에 동일한 일이 두 개 나타나게 됩니다.
+                  </p>
+                </div>
+
+                <p className="text-xs font-bold text-zinc-700">
+                  아래 방법 중 하나를 선택해 중복을 방지해 주세요:
+                </p>
+
+                {/* Option Panel */}
+                <div className="space-y-3.5 pt-1">
+                  {/* Option 1: Delete Clone (2회차) and Reclaim Original (1회차) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const archived = restoreConflict.archivedTask;
+                      const active = restoreConflict.activeTask;
+                      deleteTask(active.id);
+                      performRestoreTaskDirect(archived);
+                      setRestoreConflict(null);
+                    }}
+                    className="w-full text-left bg-emerald-50 hover:bg-emerald-100 border-2 border-black p-3.5 shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000] cursor-pointer transition-all duration-150"
+                  >
+                    <div className="font-black text-xs text-emerald-800 flex items-center gap-1.5">
+                      <span>🔥</span> 2회차 삭제 후 1회차 대기 회수
+                    </div>
+                    <p className="text-[11px] text-emerald-700 mt-1 font-medium leading-relaxed">
+                      현재 대기열의 복사본을 <span className="underline">삭제</span>하고, 보관함의 1회차 원본을 <span className="font-bold text-emerald-900">대기로 회수</span>하여 이전 기록을 이어갑니다.
+                    </p>
+                  </button>
+
+                  {/* Option 2: Cancel Reclaim */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRestoreConflict(null);
+                    }}
+                    className="w-full text-left bg-zinc-50 hover:bg-zinc-100 border-2 border-black p-3.5 shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000] cursor-pointer transition-all duration-150"
+                  >
+                    <div className="font-black text-xs text-zinc-800 flex items-center gap-1.5">
+                      <span>❌</span> 1회차 회수 취소 (현재 유지)
+                    </div>
+                    <p className="text-[11px] text-zinc-650 mt-1 font-normal leading-relaxed">
+                      작업을 취소하고 원래 상태로 둡니다. 보관함에는 원래 완수 기록이 남고, 대기열의 복사본도 그대로 남아있게 됩니다.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

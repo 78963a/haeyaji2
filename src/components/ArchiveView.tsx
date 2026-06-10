@@ -14,6 +14,7 @@ interface ArchiveViewProps {
   onStartTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTask: (task: Task) => void;
+  onRestoreTask?: (task: Task) => void;
   highlightTaskId?: string | null;
   defaultTab?: 'completed' | 'abandoned' | 'given_up';
 }
@@ -23,6 +24,7 @@ export function ArchiveView({
   onStartTask, 
   onDeleteTask, 
   onUpdateTask,
+  onRestoreTask,
   highlightTaskId,
   defaultTab
 }: ArchiveViewProps) {
@@ -53,6 +55,10 @@ export function ArchiveView({
 
   // Restore task back to pending
   const handleRestoreTask = (task: Task) => {
+    if (onRestoreTask) {
+      onRestoreTask(task);
+      return;
+    }
     const updated: Task = {
       ...task,
       status: 'pending',

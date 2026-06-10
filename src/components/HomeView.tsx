@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Task, AppSettings } from '../types';
 import { CHEER_MESSAGES, DEFAULT_TAG_CATEGORIES } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Play, Search, Filter, AlertTriangle, HelpCircle, Flame, Plus, Clock } from 'lucide-react';
+import { Sparkles, Play, Search, Filter, AlertTriangle, HelpCircle, Flame, Plus, Clock, History, ChevronDown, ChevronUp, CheckCircle2, X, RefreshCw } from 'lucide-react';
 import { formatKoreanDate, getElapsedHumanized, getDurationElapsedText, getDaysElapsed, getFriendlyDaysAgo } from '../utils/dateUtils';
 
 interface HomeViewProps {
@@ -50,6 +50,44 @@ export function HomeView({
 
   // Stable session seed for deterministic random shuffling that does not cause layout flicker on small state updates
   const [sessionSeed] = useState(() => Math.random());
+
+  // Repetition history modal states
+  const [selectedHistoryTitle, setSelectedHistoryTitle] = useState<string | null>(null);
+  const [expandedInstanceIds, setExpandedInstanceIds] = useState<Record<string, boolean>>({});
+
+  // Format accumulated seconds spent to a visual duration format
+  const formatDurationSeconds = (totalSeconds: number) => {
+    if (!totalSeconds || totalSeconds <= 0) return '0초';
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}시간`);
+    if (minutes > 0) parts.push(`${minutes}분`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}초`);
+    return parts.join(' ');
+  };
+
+  const getBaseTitle = (title: string): string => {
+    const match = title.trim().match(/^(.*?)\s*(\d+)회차$/);
+    return match ? match[1].trim() : title.trim();
+  };
+
+  // Memoized historical instances for the selected recurrent task title
+  const historyInstances = useMemo(() => {
+    if (!selectedHistoryTitle) return [];
+    const baseTitleSelected = getBaseTitle(selectedHistoryTitle).toLowerCase();
+    return tasks.filter(t => getBaseTitle(t.title).toLowerCase() === baseTitleSelected);
+  }, [tasks, selectedHistoryTitle]);
+
+  const sortedHistoryInstances = useMemo(() => {
+    return [...historyInstances].sort((a, b) => {
+      const timeA = a.completedAt ? new Date(a.completedAt).getTime() : a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.completedAt ? new Date(b.completedAt).getTime() : b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [historyInstances]);
 
   // Deterministic stable hashing function
   const getStableRandomValue = (taskId: string, seed: number) => {
@@ -336,6 +374,11 @@ export function HomeView({
 
               const isHighlighted = homeHighlightTaskId && task.id === homeHighlightTaskId;
 
+              const taskBaseTitle = getBaseTitle(task.title).toLowerCase();
+              const sameTitleAll = tasks.filter(t => getBaseTitle(t.title).toLowerCase() === taskBaseTitle);
+              const completedCount = sameTitleAll.filter(t => t.status === 'completed').length;
+              const hasHistory = sameTitleAll.length > 1;
+
               return (
                 <motion.div
                   key={task.id}
@@ -346,14 +389,29 @@ export function HomeView({
                   transition={{ type: 'spring', stiffness: 260, damping: 25 }}
                   className={`${isHighlighted ? 'ring-4 ring-[#FF4D00] ring-offset-2 rounded-none animate-pulse z-10' : ''}`}
                 >
-                  <button 
+                  <div 
                     onClick={() => onStartTask(task.id)}
                     className={`w-full text-left border-4 border-black p-5 md:p-6 shadow-[5px_5px_0px_0px_#000] relative overflow-hidden transition-all duration-200 hover:bg-[#FFFDF6] hover:shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 group focus:outline-none block cursor-pointer ${isHighlighted ? 'bg-amber-50/80 border-[#FF4D00]' : 'bg-white'}`}
                   >
                     <div className="absolute top-0 right-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-[#FF4D00]/10 pointer-events-none filter blur-xl" />
 
+                    {/* Repetition metrics indicator button */}
+                    {hasHistory && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedHistoryTitle(task.title);
+                        }}
+                        className="absolute top-4 right-4 z-20 flex items-center justify-center bg-[#FFFDF0] border-2 border-black w-8 h-8 text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#FF4D00] hover:text-white hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-150 cursor-pointer active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000]"
+                        title={`이전 반복 실천 이력 모아보기 (총 ${completedCount}회 완료)`}
+                      >
+                        <RefreshCw className="w-4 h-4 stroke-[2.5]" id={`recurr-btn-${task.id}`} />
+                      </button>
+                    )}
+
                     {/* Top card row: Badge */}
-                    <div className="flex items-center justify-between mb-4 relative z-10">
+                    <div className="flex items-center justify-between mb-4 relative z-10 mr-24">
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-normal border-2 border-black px-2 py-0.5 ${severityBg} text-black shadow-[1.5px_1.5px_0px_0px_#000]`}>
                           {severity.text}
@@ -451,7 +509,7 @@ export function HomeView({
                   >
                     {renderSubTaskSummary(task)}
                   </div>
-                </button>
+                </div>
               </motion.div>
               );
             })
@@ -464,6 +522,204 @@ export function HomeView({
           )}
         </div>
       </div>
+
+      {/* 4. REPETITION HISTORY LOOKUP MODAL */}
+      <AnimatePresence>
+        {selectedHistoryTitle && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedHistoryTitle(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative bg-[#FFFDF9] border-4 border-black shadow-[8px_8px_0px_0px_#000] w-full max-w-xl max-h-[85vh] flex flex-col p-6 overflow-hidden text-black font-sans"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button check */}
+              <button
+                onClick={() => setSelectedHistoryTitle(null)}
+                className="absolute top-4 right-4 bg-white border-2 border-black p-1 shadow-[2px_2px_0px_0px_#000] hover:bg-[#FF4D00] hover:text-white hover:translate-x-0.5 hover:translate-y-0.5 active:translate-y-1 transition-all cursor-pointer z-10"
+                title="닫기"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+
+              {/* Header */}
+              <div className="border-b-4 border-black pb-4 mb-4">
+                <div className="flex items-center gap-2 text-[#FF4D00] mb-1">
+                  <History className="w-5 h-5 stroke-[2.5]" />
+                  <span className="text-xs font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">반복 실천 보관함</span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-black leading-tight text-black mt-1 break-words">
+                  &ldquo;{getBaseTitle(selectedHistoryTitle)}&rdquo;
+                </h2>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="text-xs font-bold bg-emerald-250 border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_0px_#000]">
+                    총 실천 완료 {sortedHistoryInstances.filter(t => t.status === 'completed').length}회
+                  </span>
+                  <span className="text-xs font-bold bg-zinc-100 border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_0px_#000]">
+                    전체 생성 기록 {sortedHistoryInstances.length}회
+                  </span>
+                </div>
+              </div>
+
+              {/* Scrollable list of past instances */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+                {sortedHistoryInstances.map((inst) => {
+                  const isCompleted = inst.status === 'completed';
+                  const isAbandoned = inst.status === 'abandoned';
+                  const isGivenUp = inst.status === 'given_up';
+                  const isActiveOrPending = inst.status === 'active' || inst.status === 'pending';
+                  
+                  let cardBg = 'bg-white';
+                  let statusBadge = '';
+                  let statusBadgeBg = '';
+                  
+                  if (isCompleted) {
+                    cardBg = 'bg-emerald-50/70 border-emerald-500';
+                    statusBadge = '✓ 완수 완료';
+                    statusBadgeBg = 'bg-emerald-300 text-black';
+                  } else if (isActiveOrPending) {
+                    cardBg = 'bg-amber-50/50 border-amber-500';
+                    statusBadge = '● 진행 중';
+                    statusBadgeBg = 'bg-amber-300 text-black';
+                  } else if (isAbandoned) {
+                    cardBg = 'bg-rose-50/50 border-rose-500';
+                    statusBadge = '✗ 중단됨';
+                    statusBadgeBg = 'bg-rose-300 text-black';
+                  } else if (isGivenUp) {
+                    cardBg = 'bg-zinc-50/80 border-zinc-500';
+                    statusBadge = '👻 파기됨';
+                    statusBadgeBg = 'bg-zinc-300 text-black';
+                  }
+
+                  const isExpanded = !!expandedInstanceIds[inst.id];
+                  const hasSubtasks = inst.subtasks && inst.subtasks.length > 0;
+                  const completedSubtasksCount = inst.subtasks ? inst.subtasks.filter(st => st.completed).length : 0;
+
+                  return (
+                    <div 
+                      key={inst.id}
+                      className={`border-3 border-black p-4 shadow-[3px_3px_0px_0px_#000] relative overflow-hidden transition-all duration-150 ${cardBg}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[11px] font-bold border-2 border-black px-2 py-0.5 shadow-[1px_1px_0px_0px_#000] ${statusBadgeBg}`}>
+                            {statusBadge}
+                          </span>
+                          <span className="text-[11px] font-extrabold bg-black text-white px-2 py-0.5 border-2 border-black shadow-[1px_1px_0px_0px_#000]">
+                            {(() => {
+                              const match = inst.title.trim().match(/(\d+)회차$/);
+                              return match ? `${match[1]}회차` : '1회차';
+                            })()}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-zinc-500">
+                          입력: {formatKoreanDate(inst.createdAt)}
+                        </span>
+                      </div>
+
+                      {/* Info lines */}
+                      <div className="space-y-1.5 text-xs text-zinc-700">
+                        {inst.completedAt && (
+                          <p className="flex items-center gap-1.5 text-emerald-700 font-medium font-sans">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block" />
+                            <span>완료 시간: {new Date(inst.completedAt).toLocaleString('ko-KR')}</span>
+                          </p>
+                        )}
+                        {isAbandoned && inst.abandonedAt && (
+                          <div className="text-zinc-650 bg-zinc-50 p-2 border border-black text-[11px] space-y-1">
+                            <p className="font-bold text-rose-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full inline-block" />
+                              중단 시간: {new Date(inst.abandonedAt).toLocaleString('ko-KR')}
+                            </p>
+                            {inst.abandonReason && (
+                              <p className="italic text-zinc-650">이유: &ldquo;{inst.abandonReason}&rdquo;</p>
+                            )}
+                          </div>
+                        )}
+                        {inst.timeSpent > 0 && (
+                          <p className="flex items-center gap-1.5 text-blue-700">
+                            <span>⏱️ 총 투입 시간:</span>
+                            <span className="font-bold underline">{formatDurationSeconds(inst.timeSpent)}</span>
+                          </p>
+                        )}
+                        {inst.description && (
+                          <p className="text-zinc-500 italic text-[11px] border-l-2 border-[#FF4D00] pl-2 mt-1 py-0.5">
+                            &ldquo;{inst.description}&rdquo;
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Subtasks metrics and Expand / Collapse button */}
+                      {hasSubtasks && (
+                        <div className="mt-3 pt-3 border-t border-dashed border-zinc-300">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedInstanceIds(prev => ({
+                                ...prev,
+                                [inst.id]: !prev[inst.id]
+                              }));
+                            }}
+                            className="w-full flex items-center justify-between text-[11px] font-bold text-black border border-black bg-white px-2 py-1 shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-zinc-50 active:translate-y-0.5 cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>세부 단계 실천 ({completedSubtasksCount} / {inst.subtasks.length} 완료)</span>
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {isExpanded && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-2 pl-2 space-y-1.5 border-l-2 border-black/30 overflow-hidden"
+                            >
+                              {inst.subtasks.map((st) => (
+                                <div key={st.id} className="flex items-start gap-1.5 text-[11px]">
+                                  <span className={`px-1 rounded-sm text-[9px] font-bold border-2 border-black select-none ${st.completed ? 'bg-emerald-300 text-black' : 'bg-white text-zinc-400'}`}>
+                                    {st.completed ? '✓' : ' '}
+                                  </span>
+                                  <span className={`font-normal ${st.completed ? 'line-through text-zinc-450' : 'text-zinc-800'}`}>
+                                    {st.title}
+                                  </span>
+                                </div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-4 pt-3 border-t-3 border-black flex justify-end">
+                <button
+                  onClick={() => setSelectedHistoryTitle(null)}
+                  className="bg-black hover:bg-[#FF4D00] text-white font-bold text-xs border-2 border-black px-4 py-2 shadow-[3px_3px_0px_0px_#444] hover:shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-y-1 cursor-pointer transition-all uppercase"
+                >
+                  보관함 닫기
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
