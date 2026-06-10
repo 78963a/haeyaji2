@@ -153,6 +153,61 @@ export default function App() {
     }, 1800);
   };
 
+  const handleCloneCompletedTask = (id: string, repeatOption: 'only_metadata' | 'with_subtasks') => {
+    const taskObj = tasks.find(t => t.id === id);
+    if (!taskObj) return;
+
+    let finalCompletedTask = taskObj;
+
+    // 1. If original doesn't have "회차", update it to "1회차" so its round history is kept clean
+    const match = taskObj.title.trim().match(/^(.*?)\s*(\d+)회차$/);
+    let baseTitle = taskObj.title.trim();
+    
+    if (!match) {
+      finalCompletedTask = {
+        ...taskObj,
+        title: `${baseTitle} 1회차`
+      };
+      updateTask(finalCompletedTask);
+    }
+
+    // 2. Determine cloned task title round index
+    const titleStr = finalCompletedTask.title;
+    const matchCloned = titleStr.trim().match(/^(.*?)\s*(\d+)회차$/);
+    let finalBaseTitle = titleStr.trim();
+    let currentRound = 1;
+
+    if (matchCloned) {
+      finalBaseTitle = matchCloned[1].trim();
+      currentRound = parseInt(matchCloned[2], 10);
+    }
+    const nextRound = currentRound + 1;
+    const clonedTitle = `${finalBaseTitle} ${nextRound}회차`;
+
+    // 3. Prepare subtasks
+    const subtaskTitles = repeatOption === 'with_subtasks'
+      ? taskObj.subtasks.map(s => s.title)
+      : [];
+
+    // 4. Clone / Add task to queue
+    const clonedTask = addTask(
+      clonedTitle,
+      taskObj.description || '',
+      { ...taskObj.tags },
+      subtaskTitles
+    );
+
+    if (clonedTask) {
+      setHomeHighlightTaskId(clonedTask.id);
+      setTimeout(() => {
+        setHomeHighlightTaskId(null);
+      }, 4000);
+    }
+
+    // 5. Navigate to Home
+    setActiveView('home');
+  };
+
   const getBaseTitle = (title: string): string => {
     const match = title.trim().match(/^(.*?)\s*(\d+)회차$/);
     return match ? match[1].trim() : title.trim();
@@ -886,6 +941,7 @@ export default function App() {
                 onDeleteTask={deleteTask}
                 onUpdateTask={updateTask}
                 onRestoreTask={handleRestoreTaskWithAnimation}
+                onCloneCompletedTask={handleCloneCompletedTask}
                 highlightTaskId={archiveHighlightTaskId}
                 defaultTab={archiveDefaultTab}
               />

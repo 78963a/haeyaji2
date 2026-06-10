@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Task } from '../types';
-import { CheckCircle2, XCircle, RotateCcw, Trash2, AlertTriangle, Calendar, Clock, X, Check } from 'lucide-react';
+import { CheckCircle2, XCircle, RotateCcw, Trash2, AlertTriangle, Calendar, Clock, X, Check, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatKoreanDate, getSubtaskDurationText } from '../utils/dateUtils';
 
@@ -15,6 +15,7 @@ interface ArchiveViewProps {
   onDeleteTask: (id: string) => void;
   onUpdateTask: (task: Task) => void;
   onRestoreTask?: (task: Task) => void;
+  onCloneCompletedTask?: (id: string, repeatOption: 'only_metadata' | 'with_subtasks') => void;
   highlightTaskId?: string | null;
   defaultTab?: 'completed' | 'abandoned' | 'given_up';
 }
@@ -25,6 +26,7 @@ export function ArchiveView({
   onDeleteTask, 
   onUpdateTask,
   onRestoreTask,
+  onCloneCompletedTask,
   highlightTaskId,
   defaultTab
 }: ArchiveViewProps) {
@@ -47,6 +49,9 @@ export function ArchiveView({
 
   // Archive Task Detail Modal State
   const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
+
+  // Copying Selector Modal State
+  const [copySelectorTask, setCopySelectorTask] = useState<Task | null>(null);
 
   // Classified lists
   const completedTasks = useMemo(() => tasks.filter(t => t.status === 'completed'), [tasks]);
@@ -73,6 +78,52 @@ export function ArchiveView({
   const formatDate = (isoStr: string) => {
     const d = new Date(isoStr);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const getBaseTitle = (title: string): string => {
+    const match = title.trim().match(/^(.*?)\s*(\d+)회차$/);
+    return match ? match[1].trim() : title.trim();
+  };
+
+  const getRoundNumber = (title: string): number => {
+    const match = title.trim().match(/^(.*?)\s*(\d+)회차$/);
+    return match ? parseInt(match[2], 10) : 1;
+  };
+
+  const shouldShowCopyButton = (task: Task) => {
+    const taskBase = getBaseTitle(task.title);
+    const taskRound = getRoundNumber(task.title);
+
+    // 1. Check if there exists an active/pending (incomplete) task with the same base title
+    // and whose round is >= taskRound (preventing duplicates altogether).
+    const hasActiveOrPendingClone = tasks.some(other => {
+      if (other.status !== 'pending' && other.status !== 'active') return false;
+      const otherBase = getBaseTitle(other.title);
+      if (otherBase !== taskBase) return false;
+      
+      const otherRound = getRoundNumber(other.title);
+      return otherRound >= taskRound; 
+    });
+
+    if (hasActiveOrPendingClone) {
+      return false;
+    }
+
+    // 2. Check if this is the latest completed task among all completed tasks with the same base title.
+    const hasNewerCompleted = tasks.some(other => {
+      if (other.status !== 'completed') return false;
+      const otherBase = getBaseTitle(other.title);
+      if (otherBase !== taskBase) return false;
+
+      const otherRound = getRoundNumber(other.title);
+      return otherRound > taskRound;
+    });
+
+    if (hasNewerCompleted) {
+      return false;
+    }
+
+    return true;
   };
 
   return (
@@ -167,11 +218,26 @@ export function ArchiveView({
                   initial={task.id === highlightTaskId ? { scale: 1.04, backgroundColor: "#d1fae5", borderColor: "#10b981", boxShadow: "0px 0px 15px rgba(16, 185, 129, 0.45)" } : { scale: 1 }}
                   animate={{ scale: 1, backgroundColor: "#ffffff", borderColor: "#000000", boxShadow: "4px 4px 0px 0px #000" }}
                   transition={task.id === highlightTaskId ? { duration: 3, delay: 0.1 } : { duration: 0.2 }}
-                  className="bg-white border-3 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 shadow-[4px_4px_0px_0px_#000] cursor-pointer hover:bg-zinc-50 transition active:scale-[0.99]"
+                  className="bg-white border-3 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 shadow-[4px_4px_0px_0px_#000] cursor-pointer hover:bg-zinc-50 transition active:scale-[0.99] relative pr-12 sm:pr-14"
                   onClick={() => setSelectedDetailTask(task)}
                   id={`completed-task-card-${task.id}`}
                 >
-                  <div className="space-y-1.5 flex-1">
+                   {/* Copy Button at top-right of completed card */}
+                  {shouldShowCopyButton(task) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCopySelectorTask(task);
+                      }}
+                      className="absolute top-4 right-4 z-20 flex items-center justify-center bg-[#FFFDF0] border-2 border-black w-8 h-8 text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#FF4D00] hover:text-white hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-150 cursor-pointer active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000]"
+                      title="이 할일을 복사하여 새로 시작하기 (회차 자동누적)"
+                      id={`archive-copy-btn-${task.id}`}
+                    >
+                      <Copy className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  )}
+
+                  <div className="space-y-1.5 flex-1 pr-4 sm:pr-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-normal text-black bg-[#a7f3d0] px-2 py-0.5 border-2 border-black">
                         ✓ 성공적으로 실천성공
@@ -448,6 +514,65 @@ export function ArchiveView({
                 className="px-4 py-2 border-2 border-black font-bold text-black bg-rose-200 hover:bg-rose-300 shadow-[2px_2px_0px_0px_#000] active:scale-95 transition cursor-pointer flex-1 text-center"
               >
                 네, 삭제합니다
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COPY TASK REPEAT OPTIONS MODAL */}
+      {copySelectorTask && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-fade-in" id="archive-copy-options-dialog">
+          <div className="bg-white border-4 border-black p-5 max-w-sm w-full shadow-[8px_8px_0px_0px_#000] space-y-4">
+            <div className="flex items-center gap-2 border-b-2 border-black pb-2.5">
+              <span className="text-lg">🔁</span>
+              <h4 className="text-sm font-bold uppercase tracking-tight text-black">
+                같은 일 반복 시행 (Cloning Option)
+              </h4>
+            </div>
+
+            <div className="text-xs text-zinc-800 leading-relaxed font-normal">
+              완료된 <strong className="text-[#FF4D00]">&ldquo;{copySelectorTask.title}&rdquo;</strong> 과업을 복사하여 즉시 대기열(홈화면)에 신규 등록하고 돌아가시겠습니까?
+              <p className="mt-1.5 text-[11px] text-zinc-550">
+                복사 시 차수(회차)가 자동으로 증가하여 누적 계산됩니다.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 text-xs pt-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onCloneCompletedTask) {
+                    onCloneCompletedTask(copySelectorTask.id, 'only_metadata');
+                  }
+                  setCopySelectorTask(null);
+                }}
+                className="w-full text-left bg-white hover:bg-zinc-50 border-2 border-black p-3 font-bold shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-between"
+              >
+                <span>📝 제목만 복사하기</span>
+                <span className="text-[10px] text-zinc-500 font-normal">세부할일 제외</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onCloneCompletedTask) {
+                    onCloneCompletedTask(copySelectorTask.id, 'with_subtasks');
+                  }
+                  setCopySelectorTask(null);
+                }}
+                className="w-full text-left bg-white hover:bg-[#FFFDF0] border-2 border-[#FF4D00] p-3 font-bold shadow-[2px_2px_0px_0px_#FF4D00] active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-between text-[#FF4D00]"
+              >
+                <span>📋 할일까지 복사하기</span>
+                <span className="text-[10px] text-[#FF4D00]/75 font-normal">미완료 상태 적용</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCopySelectorTask(null)}
+                className="w-full py-2 border-2 border-dashed border-black font-semibold bg-zinc-100 hover:bg-zinc-200 text-black active:translate-y-0.5 transition-all cursor-pointer text-center"
+              >
+                취소
               </button>
             </div>
           </div>
