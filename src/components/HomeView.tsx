@@ -25,6 +25,7 @@ interface HomeViewProps {
   sortBy: string;
   setSortBy: React.Dispatch<React.SetStateAction<string>>;
   homeHighlightTaskId?: string | null;
+  titleOnlyMode?: boolean;
 }
 
 export function HomeView({
@@ -41,7 +42,8 @@ export function HomeView({
   setFilterTags,
   sortBy,
   setSortBy,
-  homeHighlightTaskId
+  homeHighlightTaskId,
+  titleOnlyMode = false
 }: HomeViewProps) {
   const pendingTasks = useMemo(() => tasks.filter(t => t.status === 'pending' || t.status === 'active'), [tasks]);
   
@@ -391,7 +393,7 @@ export function HomeView({
                 >
                   <div 
                     onClick={() => onStartTask(task.id)}
-                    className={`w-full text-left border-4 border-black p-5 md:p-6 shadow-[5px_5px_0px_0px_#000] relative overflow-hidden transition-all duration-200 hover:bg-[#FFFDF6] hover:shadow-[3px_3px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 group focus:outline-none block cursor-pointer ${isHighlighted ? 'bg-amber-50/80 border-[#FF4D00]' : 'bg-white'}`}
+                    className={`w-full text-left border-4 border-black ${titleOnlyMode ? 'p-4 md:p-4.5 shadow-[4px_4px_0px_0px_#000] hover:shadow-[2px_2px_0px_0px_#000]' : 'p-5 md:p-6 shadow-[5px_5px_0px_0px_#000] hover:shadow-[3px_3px_0px_0px_#000]'} relative overflow-hidden transition-all duration-200 hover:bg-[#FFFDF6] hover:translate-x-0.5 hover:translate-y-0.5 group focus:outline-none block cursor-pointer ${isHighlighted ? 'bg-amber-50/80 border-[#FF4D00]' : 'bg-white'}`}
                   >
                     <div className="absolute top-0 right-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-[#FF4D00]/10 pointer-events-none filter blur-xl" />
 
@@ -403,114 +405,124 @@ export function HomeView({
                           e.stopPropagation();
                           setSelectedHistoryTitle(task.title);
                         }}
-                        className="absolute top-4 right-4 z-20 flex items-center justify-center bg-[#FFFDF0] border-2 border-black w-8 h-8 text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#FF4D00] hover:text-white hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-150 cursor-pointer active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000]"
+                        className={`absolute ${titleOnlyMode ? 'top-3 right-3' : 'top-4 right-4'} z-20 flex items-center justify-center bg-[#FFFDF0] border-2 border-black w-8 h-8 text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#FF4D00] hover:text-white hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-150 cursor-pointer active:translate-y-1 active:shadow-[1px_1px_0px_0px_#000]`}
                         title={`이전 반복 실천 이력 모아보기 (총 ${completedCount}회 완료)`}
                       >
                         <RefreshCw className="w-4 h-4 stroke-[2.5]" id={`recurr-btn-${task.id}`} />
                       </button>
                     )}
 
-                    {/* Top card row: Badge */}
-                    <div className="flex items-center justify-between mb-4 relative z-10 mr-24">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-normal border-2 border-black px-2 py-0.5 ${severityBg} text-black shadow-[1.5px_1.5px_0px_0px_#000]`}>
-                          {severity.text}
-                        </span>
+                    {titleOnlyMode ? (
+                      <div className="flex items-center relative z-10 pr-12 min-h-[2rem]">
+                        <h3 className="text-base md:text-lg font-bold text-black leading-tight tracking-tight uppercase">
+                          &ldquo;{task.title}&rdquo;
+                        </h3>
                       </div>
-                      {isHighlighted && (
-                        <span className="bg-[#FF4D00] text-white text-[10px] font-black border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_0px_#000] uppercase tracking-wider animate-bounce">
-                          🔁 반복 시작된 일 (복사본)
-                        </span>
-                      )}
-                    </div>
-
-                  {/* Simplified trajectory info (one-line) - Moved ABOVE title, no box, styled highlights */}
-                  <p className="text-sm font-normal text-zinc-650 mb-2 leading-relaxed relative z-10">
-                    <span className="text-[#FF4D00] font-normal underline">
-                      {(() => {
-                        const val = task.tags.createdWhen;
-                        const cat = categories.find(c => c.id === 'createdWhen');
-                        const opt = cat?.options.find(o => o.value === val);
-                        return opt?.label || '미정';
-                      })()}
-                    </span>
-                    전 부터 하려고{" "}
-                    <span className="text-blue-600 font-normal">
-                      {formatKoreanDate(task.createdAt)}
-                    </span>
-                    {getDaysElapsed(task.createdAt) === 0 ? (
-                      <>
-                        에 입력.{" "}
-                        <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase animate-pulse">
-                          오늘.
-                        </span>
-                      </>
                     ) : (
                       <>
-                        에 입력, 그 후{" "}
-                        <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase">
-                          {getDurationElapsedText(task.createdAt)}
-                        </span>
-                        이 더 지남.
+                        {/* Top card row: Badge */}
+                        <div className="flex items-center justify-between mb-4 relative z-10 mr-24">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-normal border-2 border-black px-2 py-0.5 ${severityBg} text-black shadow-[1.5px_1.5px_0px_0px_#000]`}>
+                              {severity.text}
+                            </span>
+                          </div>
+                          {isHighlighted && (
+                            <span className="bg-[#FF4D00] text-white text-[10px] font-black border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0px_0px_#000] uppercase tracking-wider animate-bounce">
+                              🔁 반복 시작된 일 (복사본)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Simplified trajectory info (one-line) - Moved ABOVE title, no box, styled highlights */}
+                        <p className="text-sm font-normal text-zinc-650 mb-2 leading-relaxed relative z-10">
+                          <span className="text-[#FF4D00] font-normal underline">
+                            {(() => {
+                              const val = task.tags.createdWhen;
+                              const cat = categories.find(c => c.id === 'createdWhen');
+                              const opt = cat?.options.find(o => o.value === val);
+                              return opt?.label || '미정';
+                            })()}
+                          </span>
+                          전 부터 하려고{" "}
+                          <span className="text-blue-600 font-normal">
+                            {formatKoreanDate(task.createdAt)}
+                          </span>
+                          {getDaysElapsed(task.createdAt) === 0 ? (
+                            <>
+                              에 입력.{" "}
+                              <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase animate-pulse">
+                                오늘.
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              에 입력, 그 후{" "}
+                              <span className="bg-yellow-250 text-black border border-black px-1.5 py-0.5 inline-block text-xs font-normal leading-none uppercase">
+                                {getDurationElapsedText(task.createdAt)}
+                              </span>
+                              이 더 지남.
+                            </>
+                          )}
+                        </p>
+
+                        {(() => {
+                          const completedSubs = task.subtasks?.filter(st => st.completed && st.completedAt) || [];
+                          if (completedSubs.length === 0) return null;
+                          
+                          const latestCompletedAt = completedSubs.reduce((latest, current) => {
+                            if (!latest) return current.completedAt!;
+                            const latestTime = new Date(latest).getTime();
+                            const currentTime = new Date(current.completedAt!).getTime();
+                            return currentTime > latestTime ? current.completedAt! : latest;
+                          }, completedSubs[0].completedAt!);
+                          
+                          const friendlyWhen = getFriendlyDaysAgo(latestCompletedAt);
+                          return (
+                            <p className="text-sm font-normal text-emerald-600 mb-2 leading-relaxed relative z-10 flex items-center gap-1.5">
+                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-400 px-2 py-0.5 text-xs font-normal uppercase">
+                                 <span className="underline">{friendlyWhen} 함 🔥</span>
+                              </span>
+                            </p>
+                          );
+                        })()}
+
+                        <h3 className="text-xl md:text-2xl font-bold text-black mb-3 leading-tight tracking-tight uppercase relative z-10">
+                          &ldquo;{task.title}&rdquo;
+                        </h3>
+
+                        {task.description && (
+                          <p className="text-[#1A1A1A]/80 text-sm md:text-base mb-4 leading-relaxed pl-3 border-l-4 border-[#FF4D00] font-normal relative z-10">
+                            &ldquo;{task.description}&rdquo;
+                          </p>
+                        )}
+
+                        {/* Associated Grid Tags */}
+                        <div className="flex flex-wrap gap-2 mb-4 relative z-10">
+                          {categories.map((category) => {
+                            const value = task.tags[category.id];
+                            if (!value) return null;
+                            const option = category.options.find(opt => opt.value === value);
+                            if (!option) return null;
+                            return (
+                              <span key={category.id} className="text-xs font-normal text-[#1A1A1A] bg-[#F4F4F1] px-2.5 py-1.5 flex items-center gap-1">
+                                {option.icon && <span className="mr-0.5">{option.icon}</span>}
+                                {option.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        {/* 할 일을 잘게 부순 단계 */}
+                        <div
+                          className="w-full text-left bg-white border-3 border-dashed border-zinc-400 p-5 text-sm relative z-10 font-sans mt-3.5 group-hover:bg-[#FFFDF0] transition-colors"
+                        >
+                          {renderSubTaskSummary(task)}
+                        </div>
                       </>
                     )}
-                  </p>
-
-                  {(() => {
-                    const completedSubs = task.subtasks?.filter(st => st.completed && st.completedAt) || [];
-                    if (completedSubs.length === 0) return null;
-                    
-                    const latestCompletedAt = completedSubs.reduce((latest, current) => {
-                      if (!latest) return current.completedAt!;
-                      const latestTime = new Date(latest).getTime();
-                      const currentTime = new Date(current.completedAt!).getTime();
-                      return currentTime > latestTime ? current.completedAt! : latest;
-                    }, completedSubs[0].completedAt!);
-                    
-                    const friendlyWhen = getFriendlyDaysAgo(latestCompletedAt);
-                    return (
-                      <p className="text-sm font-normal text-emerald-600 mb-2 leading-relaxed relative z-10 flex items-center gap-1.5">
-                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-400 px-2 py-0.5 text-xs font-normal uppercase">
-                           <span className="underline">{friendlyWhen} 함 🔥</span>
-                        </span>
-                      </p>
-                    );
-                  })()}
-
-                  <h3 className="text-xl md:text-2xl font-bold text-black mb-3 leading-tight tracking-tight uppercase relative z-10">
-                    &ldquo;{task.title}&rdquo;
-                  </h3>
-
-                  {task.description && (
-                    <p className="text-[#1A1A1A]/80 text-sm md:text-base mb-4 leading-relaxed pl-3 border-l-4 border-[#FF4D00] font-normal relative z-10">
-                      &ldquo;{task.description}&rdquo;
-                    </p>
-                  )}
-
-                  {/* Associated Grid Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4 relative z-10">
-                    {categories.map((category) => {
-                      const value = task.tags[category.id];
-                      if (!value) return null;
-                      const option = category.options.find(opt => opt.value === value);
-                      if (!option) return null;
-                      return (
-                        <span key={category.id} className="text-xs font-normal text-[#1A1A1A] bg-[#F4F4F1] px-2.5 py-1.5 flex items-center gap-1">
-                          {option.icon && <span className="mr-0.5">{option.icon}</span>}
-                          {option.label}
-                        </span>
-                      );
-                    })}
                   </div>
-
-                  {/* 할 일을 잘게 부순 단계 */}
-                  <div
-                    className="w-full text-left bg-white border-3 border-dashed border-zinc-400 p-5 text-sm relative z-10 font-sans mt-3.5 group-hover:bg-[#FFFDF0] transition-colors"
-                  >
-                    {renderSubTaskSummary(task)}
-                  </div>
-                </div>
-              </motion.div>
+                </motion.div>
               );
             })
           ) : (

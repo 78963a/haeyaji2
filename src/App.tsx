@@ -13,7 +13,7 @@ import { SettingsView } from './components/SettingsView';
 import { ActiveFocusView } from './components/ActiveFocusView';
 import { Task } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Plus, Settings, Archive, Clock, Sparkles, Flame, Dices, Search, Filter, AlertTriangle, BarChart2 } from 'lucide-react';
+import { Home, Plus, Settings, Archive, Clock, Sparkles, Flame, Dices, Search, Filter, AlertTriangle, BarChart2, LayoutList } from 'lucide-react';
 import { formatKoreanDate, getElapsedHumanized, getDurationElapsedText, getDaysElapsed } from './utils/dateUtils';
 import { TAG_CREATED_WHEN_MAP, DEFAULT_TAG_CATEGORIES } from './constants';
 
@@ -52,6 +52,7 @@ export default function App() {
 
   // Navigation: 'home' | 'add' | 'analytics' | 'archive' | 'settings' | 'active'
   const [activeView, setActiveView] = useState<'home' | 'add' | 'analytics' | 'archive' | 'settings' | 'active'>('home');
+  const [titleOnlyMode, setTitleOnlyMode] = useState<boolean>(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<null | 'unstarted' | 'inprogress' | 'completed'>(null);
   const [urgeIndex, setUrgeIndex] = useState(0);
@@ -452,6 +453,18 @@ export default function App() {
               )}
             </button>
 
+            {/* Middle: Title Only Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setTitleOnlyMode(prev => !prev)}
+              className={`flex items-center gap-1.5 border-2 border-black px-2.5 py-1.5 shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 transition-all text-xs font-black cursor-pointer shrink-0 ${titleOnlyMode ? 'bg-[#FF4D00] text-white border-[#FF4D00]' : 'bg-white text-black hover:bg-zinc-50 border-black'}`}
+              id="title-only-mode-toggle"
+              title={titleOnlyMode ? "전체 정보 형식으로 다시 보기" : "할일카드를 제목만 보이도록 간단히 축소"}
+            >
+              <LayoutList className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>{titleOnlyMode ? "전체 보기" : "제목만 보기"}</span>
+            </button>
+
             {/* Right side: Sorting Selector */}
             <div className="flex items-center shrink-0">
               <select
@@ -844,6 +857,7 @@ export default function App() {
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 homeHighlightTaskId={homeHighlightTaskId}
+                titleOnlyMode={titleOnlyMode}
               />
             )}
 
