@@ -183,6 +183,12 @@ export function ArchiveView({
                     <h4 className="text-sm font-black text-black line-through decoration-black decoration-2">
                       {task.title}
                     </h4>
+
+                    {task.completedNotes && (
+                      <p className="text-emerald-700 italic text-[11px] border-l-2 border-emerald-400 pl-2 mt-1 py-0.5 max-w-xl break-words">
+                        &ldquo;{task.completedNotes}&rdquo;
+                      </p>
+                    )}
                     
                     <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-600 pt-1 font-normal">
                       {task.subtasks.length > 0 && (
@@ -504,6 +510,16 @@ export function ArchiveView({
                     {t.status === 'abandoned' ? '보류 사유 요약' : '당시 포기 결정 사유 입력기록'}
                   </p>
                   <p className="italic">&ldquo;{t.abandonReason}&rdquo;</p>
+                </div>
+              )}
+
+              {t.status === 'completed' && t.completedNotes && (
+                <div className="p-4 border-2 border-black bg-emerald-50 text-emerald-950 border-emerald-300 leading-relaxed text-xs font-normal">
+                  <p className="font-bold flex items-center gap-1 mb-1 text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                    기록된 완료 소감 / 성찰 메모
+                  </p>
+                  <p className="italic">&ldquo;{t.completedNotes}&rdquo;</p>
                 </div>
               )}
 

@@ -14,7 +14,7 @@ interface ActiveFocusViewProps {
   task: Task;
   settings: AppSettings;
   onPauseTask: (id: string) => void;
-  onCompleteTask: (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks') => void;
+  onCompleteTask: (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks', notes?: string) => void;
   onAbandonTask: (id: string, reason: string) => void;
   onGiveUpTask: (id: string, reason: string) => void;
   onDeleteTask: (id: string) => void;
@@ -143,8 +143,9 @@ export function ActiveFocusView({
   };
 
   const handleCompleteSuccess = () => {
-    onCompleteTask(task.id, repeatOption);
+    onCompleteTask(task.id, repeatOption, actionReason.trim());
     setSelectedAction(null);
+    setActionReason('');
   };
 
   const handleExecuteAbandon = () => {
@@ -731,6 +732,19 @@ export function ActiveFocusView({
                         </span>
                       )}
                     </p>
+
+                    {/* 완료 메모 및 소감 작성 (선택) */}
+                    <div className="space-y-1.5 text-left">
+                      <label className="text-[10px] font-bold text-black uppercase block">완료 메모 및 실천 소감 (선택):</label>
+                      <input
+                        type="text"
+                        placeholder="예: 드디어 완수했네요! 미루던 무거운 짐을 가볍게 털어냈습니다."
+                        value={actionReason}
+                        onChange={(e) => setActionReason(e.target.value)}
+                        className="w-full bg-[#F4F4F1] border-2 border-black p-2.5 text-xs text-black outline-none font-normal focus:bg-white"
+                        autoFocus
+                      />
+                    </div>
 
                     {/* 같은 일 반복 시행(복사) 선택지 */}
                     <div className="bg-[#FFFDF0] p-4 border-2 border-black space-y-2 text-left" id="repeat-selection-container">

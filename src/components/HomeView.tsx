@@ -633,6 +633,11 @@ export function HomeView({
                             <span>완료 시간: {new Date(inst.completedAt).toLocaleString('ko-KR')}</span>
                           </p>
                         )}
+                        {inst.completedAt && inst.completedNotes && (
+                          <div className="bg-emerald-50/50 p-2 border border-emerald-200 text-[11px] text-emerald-900 border-l-3 border-l-emerald-500 my-1">
+                            <p className="italic font-normal">완료 메모: &ldquo;{inst.completedNotes}&rdquo;</p>
+                          </div>
+                        )}
                         {isAbandoned && inst.abandonedAt && (
                           <div className="text-zinc-650 bg-zinc-50 p-2 border border-black text-[11px] space-y-1">
                             <p className="font-bold text-rose-600 flex items-center gap-1">

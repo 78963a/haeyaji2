@@ -74,7 +74,7 @@ export default function App() {
     activeTask: Task;
   } | null>(null);
 
-  const handleTransitionCompleteTask = (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks') => {
+  const handleTransitionCompleteTask = (id: string, repeatOption?: 'none' | 'only_metadata' | 'with_subtasks', notes?: string) => {
     const taskObj = tasks.find(t => t.id === id);
     if (!taskObj) return;
 
@@ -102,7 +102,7 @@ export default function App() {
         }
       }
 
-      completeTask(id);
+      completeTask(id, notes);
       setArchiveDefaultTab('completed');
       setArchiveHighlightTaskId(id);
       setActiveView('archive');

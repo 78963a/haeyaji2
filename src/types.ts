@@ -47,6 +47,7 @@ export interface Task {
   completedAt?: string; // ISO String
   abandonedAt?: string; // ISO String
   abandonReason?: string;
+  completedNotes?: string;
   status: TaskStatus;
   timeSpent: number; // accumulated time spent in seconds (sum of actionLogs durations + any previous timeSpent)
   tags: TaskTags;

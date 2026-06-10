@@ -318,23 +318,24 @@ export function useTasks() {
     saveTasksToLocalForage(updated);
   };
 
-  const completeTask = (id: string) => {
+  const completeTask = (id: string, notes?: string) => {
     const updated = tasksRef.current.map((t) => {
-      if (t.id === id) {
-        // Automatically complete all unfinished subtasks if user hits overall done
-        const resolvedSubtasks = t.subtasks.map((st) =>
-          !st.completed ? { ...st, completed: true, completedAt: new Date().toISOString() } : st
-        );
-        return {
-          ...t,
-          status: 'completed' as const,
-          completedAt: new Date().toISOString(),
-          subtasks: resolvedSubtasks,
-          lastOperatedAt: new Date().toISOString()
-        };
-      }
-      return t;
-    });
+       if (t.id === id) {
+         // Automatically complete all unfinished subtasks if user hits overall done
+         const resolvedSubtasks = t.subtasks.map((st) =>
+           !st.completed ? { ...st, completed: true, completedAt: new Date().toISOString() } : st
+         );
+         return {
+           ...t,
+           status: 'completed' as const,
+           completedAt: new Date().toISOString(),
+           completedNotes: notes || undefined,
+           subtasks: resolvedSubtasks,
+           lastOperatedAt: new Date().toISOString()
+         };
+       }
+       return t;
+     });
 
     if (activeTaskId === id) {
       setActiveTaskId(null);
