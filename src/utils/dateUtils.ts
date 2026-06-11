@@ -21,8 +21,10 @@ export function getDaysElapsed(dateStr: string): number {
   try {
     const start = new Date(dateStr);
     const now = new Date();
-    const diffMs = Math.max(0, now.getTime() - start.getTime());
-    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const startMidnight = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = nowMidnight.getTime() - startMidnight.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
   } catch {
     return 0;
   }
